@@ -853,43 +853,51 @@ export default function PlayItApp() {
               <div className="search-results">
                 <ul className="results-list">
                   {/* Tracks */}
-                  {searchResults.tracks?.items.map((track) => (
-                    <TrackResultItem
-                      key={`track-${track.id}`}
-                      track={track}
-                      onSelect={addTrackToVoting}
-                      isAdded={votingTrackIds.has(track.id)}
-                    />
-                  ))}
+                  {searchResults.tracks?.items
+                    .filter((track) => track !== null)
+                    .map((track) => (
+                      <TrackResultItem
+                        key={`track-${track.id}`}
+                        track={track}
+                        onSelect={addTrackToVoting}
+                        isAdded={votingTrackIds.has(track.id)}
+                      />
+                    ))}
 
                   {/* Albums */}
-                  {searchResults.albums?.items.map((album) => (
-                    <AlbumResultItem
-                      key={`album-${album.id}`}
-                      album={album}
-                      onSelect={loadAlbum}
-                    />
-                  ))}
+                  {searchResults.albums?.items
+                    .filter((album) => album !== null)
+                    .map((album) => (
+                      <AlbumResultItem
+                        key={`album-${album.id}`}
+                        album={album}
+                        onSelect={loadAlbum}
+                      />
+                    ))}
 
                   {/* Playlists */}
-                  {searchResults.playlists?.items.map((playlist) => (
-                    <PlaylistResultItem
-                      key={`playlist-${playlist.id}`}
-                      playlist={playlist}
-                      onSelect={loadPlaylist}
-                    />
-                  ))}
+                  {searchResults.playlists?.items
+                    .filter((playlist) => playlist !== null)
+                    .map((playlist) => (
+                      <PlaylistResultItem
+                        key={`playlist-${playlist.id}`}
+                        playlist={playlist}
+                        onSelect={loadPlaylist}
+                      />
+                    ))}
 
                   {/* Artists */}
-                  {searchResults.artists?.items.map((artist) => (
-                    <ArtistResultItem
-                      key={`artist-${artist.id}`}
-                      artist={artist}
-                      onSelect={() => {
-                        setSearchQuery(artist.name);
-                      }}
-                    />
-                  ))}
+                  {searchResults.artists?.items
+                    .filter((artist) => artist !== null)
+                    .map((artist) => (
+                      <ArtistResultItem
+                        key={`artist-${artist.id}`}
+                        artist={artist}
+                        onSelect={() => {
+                          setSearchQuery(artist.name);
+                        }}
+                      />
+                    ))}
                 </ul>
               </div>
             )}
