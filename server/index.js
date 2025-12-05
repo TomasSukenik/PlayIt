@@ -131,6 +131,29 @@ app.get("/api/spotify/track/:id", async (req, res) => {
   }
 });
 
+// Get album details by ID
+app.get("/api/spotify/album/:id", async (req, res) => {
+  try {
+    const token = await getSpotifyToken();
+    const albumRes = await axios.get(
+      `https://api.spotify.com/v1/albums/${req.params.id}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { market: "US" },
+      }
+    );
+    res.json(albumRes.data);
+  } catch (error) {
+    console.error("Error fetching album:", error.response?.data || error.message);
+    
+    if (error.response?.status === 404) {
+      return res.status(404).json({ error: "Album not found" });
+    }
+    
+    res.status(500).json({ error: "Failed to fetch album" });
+  }
+});
+
 // Search for playlists, tracks, artists, etc.
 app.get("/api/spotify/search", async (req, res) => {
   const { q, type = "playlist", limit = 20 } = req.query;
