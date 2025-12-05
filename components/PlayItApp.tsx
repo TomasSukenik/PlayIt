@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
-import "./App.css";
+"use client";
 
-const API_URL = "http://localhost:3001";
+import { useState, useEffect } from "react";
 
 // User type from Spotify
 interface SpotifyUser {
@@ -251,7 +250,7 @@ function VoteableSongItem({
   );
 }
 
-function App() {
+export default function PlayItApp() {
   // Auth state
   const [user, setUser] = useState<SpotifyUser | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -301,7 +300,7 @@ function App() {
 
       if (code && state) {
         try {
-          const res = await fetch(`${API_URL}/api/auth/callback`, {
+          const res = await fetch("/api/auth/callback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code, state }),
@@ -323,7 +322,7 @@ function App() {
       const sessionId = localStorage.getItem("sessionId");
       if (sessionId) {
         try {
-          const res = await fetch(`${API_URL}/api/auth/me`, {
+          const res = await fetch("/api/auth/me", {
             headers: { Authorization: `Bearer ${sessionId}` },
           });
 
@@ -357,7 +356,7 @@ function App() {
   // Handle Spotify login - redirect to Spotify OAuth
   const handleSpotifyLogin = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/auth/login`);
+      const res = await fetch("/api/auth/login");
       const data = await res.json();
       window.location.href = data.url;
     } catch (err) {
@@ -370,7 +369,7 @@ function App() {
     const sessionId = localStorage.getItem("sessionId");
     if (sessionId) {
       try {
-        await fetch(`${API_URL}/api/auth/logout`, {
+        await fetch("/api/auth/logout", {
           method: "POST",
           headers: { Authorization: `Bearer ${sessionId}` },
         });
@@ -420,7 +419,7 @@ function App() {
 
     try {
       const res = await fetch(
-        `http://localhost:3001/api/spotify/search?q=${encodeURIComponent(
+        `/api/spotify/search?q=${encodeURIComponent(
           searchQuery
         )}&type=${searchType}&limit=20`
       );
@@ -439,9 +438,7 @@ function App() {
   const loadPlaylist = async (playlist: SpotifyPlaylist) => {
     setLoadingContent(true);
     try {
-      const res = await fetch(
-        `http://localhost:3001/api/spotify/playlist/${playlist.id}`
-      );
+      const res = await fetch(`/api/spotify/playlist/${playlist.id}`);
       if (!res.ok) throw new Error("Failed to load playlist");
       const data = await res.json();
       setSelectedPlaylist(data);
@@ -459,9 +456,7 @@ function App() {
   const loadAlbum = async (album: SpotifyAlbum) => {
     setLoadingContent(true);
     try {
-      const res = await fetch(
-        `http://localhost:3001/api/spotify/album/${album.id}`
-      );
+      const res = await fetch(`/api/spotify/album/${album.id}`);
       if (!res.ok) throw new Error("Failed to load album");
       const data = await res.json();
       setSelectedAlbum({ ...album, ...data });
@@ -896,4 +891,3 @@ function App() {
   );
 }
 
-export default App;

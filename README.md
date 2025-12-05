@@ -1,73 +1,81 @@
-# React + TypeScript + Vite
+# PlayIt
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Search music & vote for what plays next - A Spotify-powered music voting app.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Next.js 15** - React framework with App Router
+- **TypeScript** - Type safety
+- **Spotify Web API** - Music search and playback
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Prerequisites
 
-## Expanding the ESLint configuration
+1. Create a Spotify Developer App at https://developer.spotify.com/dashboard
+2. Add your redirect URI to your Spotify app settings:
+   - For local development: `http://localhost:3000/callback`
+   - For production: `https://your-vercel-url.vercel.app/callback`
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Environment Variables
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Create a `.env.local` file in the root directory:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+```env
+# Spotify API credentials
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# App URL (for OAuth redirect)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Installation
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm install
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Development
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+## Deploying to Vercel
+
+1. Push your code to GitHub
+2. Import the project in [Vercel](https://vercel.com)
+3. Add the environment variables in Vercel's project settings:
+   - `SPOTIFY_CLIENT_ID`
+   - `SPOTIFY_CLIENT_SECRET`
+   - `NEXT_PUBLIC_APP_URL` (your Vercel production URL)
+4. Update your Spotify app's redirect URI to include your Vercel URL
+
+## Features
+
+- 🔍 Search for songs, albums, playlists, and artists
+- 📋 Build a voting queue from search results
+- 🗳️ Vote for your favorite tracks
+- 🔐 Spotify OAuth authentication
+- 📱 Responsive design
+
+## Project Structure
+
+```
+├── app/
+│   ├── api/
+│   │   ├── auth/         # OAuth endpoints
+│   │   └── spotify/      # Spotify API proxy
+│   ├── callback/         # OAuth callback page
+│   ├── globals.css       # Global styles
+│   ├── layout.tsx        # Root layout
+│   └── page.tsx          # Home page
+├── components/
+│   └── PlayItApp.tsx     # Main app component
+├── lib/
+│   └── spotify.ts        # Spotify utilities
+└── next.config.ts        # Next.js configuration
 ```
