@@ -1,5 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
+
+const API_URL = "http://localhost:3001";
+
+// User type from Spotify
+interface SpotifyUser {
+  id: string;
+  displayName: string;
+  email: string;
+  imageUrl?: string;
+  product: string;
+}
 
 // Spotify API response types
 interface SpotifyImage {
@@ -241,6 +252,11 @@ function VoteableSongItem({
 }
 
 function App() {
+  // Auth state
+  const [user, setUser] = useState<SpotifyUser | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<SearchType>("track");
@@ -261,6 +277,110 @@ function App() {
   // Voting state
   const [votingTracks, setVotingTracks] = useState<SpotifyTrackSimple[]>([]);
   const [spotifyVotes, setSpotifyVotes] = useState<Record<string, number>>({});
+
+  const isLoggedIn = !!user;
+
+  // Check for OAuth callback on page load
+  useEffect(() => {
+    const handleCallback = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const state = params.get("state");
+      const error = params.get("error");
+
+      // Clear URL params
+      if (code || error) {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+
+      if (error) {
+        console.error("OAuth error:", error);
+        setAuthLoading(false);
+        return;
+      }
+
+      if (code && state) {
+        try {
+          const res = await fetch(`${API_URL}/api/auth/callback`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code, state }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem("sessionId", data.sessionId);
+            setUser(data.user);
+          } else {
+            console.error("Failed to exchange code");
+          }
+        } catch (err) {
+          console.error("Callback error:", err);
+        }
+      }
+
+      // Check existing session
+      const sessionId = localStorage.getItem("sessionId");
+      if (sessionId) {
+        try {
+          const res = await fetch(`${API_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${sessionId}` },
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            setUser(data.user);
+          } else {
+            localStorage.removeItem("sessionId");
+          }
+        } catch (err) {
+          console.error("Auth check error:", err);
+        }
+      }
+
+      setAuthLoading(false);
+    };
+
+    handleCallback();
+  }, []);
+
+  // Handle Sync button click
+  const handleSync = () => {
+    if (!isLoggedIn) {
+      setShowLoginModal(true);
+    } else {
+      // TODO: Perform sync action (e.g., create Spotify playlist)
+      console.log("Syncing...", votingTracks);
+    }
+  };
+
+  // Handle Spotify login - redirect to Spotify OAuth
+  const handleSpotifyLogin = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`);
+      const data = await res.json();
+      window.location.href = data.url;
+    } catch (err) {
+      console.error("Login error:", err);
+    }
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    const sessionId = localStorage.getItem("sessionId");
+    if (sessionId) {
+      try {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${sessionId}` },
+        });
+      } catch (err) {
+        console.error("Logout error:", err);
+      }
+    }
+    localStorage.removeItem("sessionId");
+    setUser(null);
+  };
 
   // Track IDs that are in the voting list
   const votingTrackIds = new Set(votingTracks.map((t) => t.id));
@@ -406,8 +526,30 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1 className="logo">PlayIt</h1>
-        <p className="tagline">Search music & vote for what plays next</p>
+        <div className="header-left">
+          <h1 className="logo">PlayIt</h1>
+          <p className="tagline">Search music & vote for what plays next</p>
+        </div>
+        <div className="header-right">
+          {authLoading ? null : user ? (
+            <div className="user-info">
+              {user.imageUrl && (
+                <img src={user.imageUrl} alt="" className="user-avatar" />
+              )}
+              <span className="user-name">{user.displayName}</span>
+              <button className="logout-btn" onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              className="header-login-btn"
+              onClick={() => setShowLoginModal(true)}
+            >
+              Login with Spotify
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="main-layout">
@@ -671,11 +813,18 @@ function App() {
         <section className="voting-panel">
           <div className="voting-header">
             <h2>Voting Queue</h2>
-            {voteableSongs.length > 0 && (
-              <button className="clear-btn" onClick={clearVotingList}>
-                Clear all
-              </button>
-            )}
+            <div className="voting-actions">
+              {voteableSongs.length > 0 && (
+                <>
+                  <button className="sync-btn" onClick={handleSync}>
+                    Sync
+                  </button>
+                  <button className="clear-btn" onClick={clearVotingList}>
+                    Clear
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {voteableSongs.length > 0 ? (
@@ -703,6 +852,46 @@ function App() {
           )}
         </section>
       </main>
+
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="modal-overlay" onClick={() => setShowLoginModal(false)}>
+          <div className="login-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="modal-close"
+              onClick={() => setShowLoginModal(false)}
+            >
+              ×
+            </button>
+            <div className="login-content">
+              <div className="spotify-logo">
+                <svg viewBox="0 0 24 24" width="64" height="64">
+                  <circle cx="12" cy="12" r="12" fill="#1DB954" />
+                  <path
+                    d="M17.9 10.9C14.7 9 9.4 8.8 6.4 9.7c-.5.1-1-.2-1.1-.7-.1-.5.2-1 .7-1.1 3.4-1.1 9.2-.9 12.8 1.3.5.3.6.9.3 1.4-.3.4-.9.5-1.2.3zm-.2 2.9c-.2.4-.7.5-1 .3-2.7-1.7-6.8-2.2-10-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.2-.6 11.3 1.4.3.2.4.7.2 1zm-1.2 2.8c-.2.3-.5.4-.8.2-2.4-1.4-5.3-1.7-8.8-.9-.3.1-.6-.2-.7-.5-.1-.3.2-.6.5-.7 3.8-.9 7.1-.5 9.7 1.1.3.2.4.5.1.8z"
+                    fill="white"
+                  />
+                </svg>
+              </div>
+              <h2>Connect to Spotify</h2>
+              <p>Log in with your Spotify account to sync your voting queue</p>
+              <button
+                className="spotify-login-btn"
+                onClick={handleSpotifyLogin}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                  <circle cx="12" cy="12" r="12" fill="currentColor" />
+                  <path
+                    d="M17.9 10.9C14.7 9 9.4 8.8 6.4 9.7c-.5.1-1-.2-1.1-.7-.1-.5.2-1 .7-1.1 3.4-1.1 9.2-.9 12.8 1.3.5.3.6.9.3 1.4-.3.4-.9.5-1.2.3zm-.2 2.9c-.2.4-.7.5-1 .3-2.7-1.7-6.8-2.2-10-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.2-.6 11.3 1.4.3.2.4.7.2 1zm-1.2 2.8c-.2.3-.5.4-.8.2-2.4-1.4-5.3-1.7-8.8-.9-.3.1-.6-.2-.7-.5-.1-.3.2-.6.5-.7 3.8-.9 7.1-.5 9.7 1.1.3.2.4.5.1.8z"
+                    fill="#000"
+                  />
+                </svg>
+                Continue with Spotify
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

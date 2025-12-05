@@ -2,26 +2,41 @@ import express from "express";
 import cors from "cors";
 import axios from "axios";
 import dotenv from "dotenv";
+import crypto from "crypto";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3001;
+const FRONTEND_URL = "https://localhost:5173";
 
-app.use(cors());
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Spotify credentials
 const clientId = process.env.SPOTIFY_CLIENT_ID;
 const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+const redirectUri = `${FRONTEND_URL}/callback`;
 
-// Cache token to avoid requesting a new one for every API call
+// In-memory session store (in production, use Redis or database)
+const sessions = new Map();
+
+// Cache token for Client Credentials flow (public API calls)
 let cachedToken = null;
 let tokenExpiry = 0;
 
+// Generate random string for state parameter
+function generateRandomString(length) {
+  return crypto.randomBytes(length).toString("hex").slice(0, length);
+}
+
 // Get Spotify access token using Client Credentials Flow (no user login needed)
 async function getSpotifyToken() {
-  // Return cached token if still valid
   if (cachedToken && Date.now() < tokenExpiry) {
     return cachedToken;
   }
@@ -41,49 +56,184 @@ async function getSpotifyToken() {
     );
 
     cachedToken = response.data.access_token;
-    // Set expiry 5 minutes before actual expiry to be safe
     tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
 
     console.log("Spotify token obtained successfully");
     return cachedToken;
   } catch (error) {
-    console.error("Error getting Spotify token:", error.response?.data || error.message);
+    console.error(
+      "Error getting Spotify token:",
+      error.response?.data || error.message
+    );
     throw error;
   }
 }
 
-// In-memory song data (fallback/demo)
-const songs = [
-  { id: 1, title: "Bohemian Rhapsody", artist: "Queen", votes: 12 },
-  { id: 2, title: "Stairway to Heaven", artist: "Led Zeppelin", votes: 8 },
-  { id: 3, title: "Hotel California", artist: "Eagles", votes: 15 },
-  { id: 4, title: "Comfortably Numb", artist: "Pink Floyd", votes: 6 },
-  { id: 5, title: "Sweet Child O' Mine", artist: "Guns N' Roses", votes: 10 },
-  { id: 6, title: "Smells Like Teen Spirit", artist: "Nirvana", votes: 9 },
-  { id: 7, title: "Back in Black", artist: "AC/DC", votes: 7 },
-  { id: 8, title: "Imagine", artist: "John Lennon", votes: 11 },
-  { id: 9, title: "Purple Rain", artist: "Prince", votes: 5 },
-  { id: 10, title: "Like a Rolling Stone", artist: "Bob Dylan", votes: 4 },
-];
+// ============ SPOTIFY OAUTH ROUTES ============
 
-// GET /api/songs - returns all songs sorted by votes (descending)
-app.get("/api/songs", (req, res) => {
-  const sortedSongs = [...songs].sort((a, b) => b.votes - a.votes);
-  res.json(sortedSongs);
+// Step 1: Redirect user to Spotify authorization
+app.get("/api/auth/login", (req, res) => {
+  const state = generateRandomString(16);
+  const scope = [
+    "user-read-private",
+    "user-read-email",
+    "playlist-modify-public",
+    "playlist-modify-private",
+    "streaming",
+    "user-read-playback-state",
+    "user-modify-playback-state",
+  ].join(" ");
+
+  // Store state for verification
+  sessions.set(state, { created: Date.now() });
+
+  const authUrl = new URL("https://accounts.spotify.com/authorize");
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("client_id", clientId);
+  authUrl.searchParams.set("scope", scope);
+  authUrl.searchParams.set("redirect_uri", redirectUri);
+  authUrl.searchParams.set("state", state);
+
+  res.json({ url: authUrl.toString() });
 });
 
-// POST /api/songs/:id/upvote - increments vote count for a song
-app.post("/api/songs/:id/upvote", (req, res) => {
-  const id = parseInt(req.params.id);
-  const song = songs.find((s) => s.id === id);
+// Step 2: Handle callback from Spotify
+app.post("/api/auth/callback", async (req, res) => {
+  const { code, state } = req.body;
 
-  if (!song) {
-    return res.status(404).json({ error: "Song not found" });
+  // Verify state
+  if (!state || !sessions.has(state)) {
+    return res.status(400).json({ error: "Invalid state parameter" });
+  }
+  sessions.delete(state);
+
+  if (!code) {
+    return res.status(400).json({ error: "Authorization code is required" });
   }
 
-  song.votes += 1;
-  const sortedSongs = [...songs].sort((a, b) => b.votes - a.votes);
-  res.json(sortedSongs);
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await axios.post(
+      "https://accounts.spotify.com/api/token",
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization:
+            "Basic " +
+            Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
+        },
+      }
+    );
+
+    const { access_token, refresh_token, expires_in } = tokenResponse.data;
+
+    // Get user profile
+    const userResponse = await axios.get("https://api.spotify.com/v1/me", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+
+    const user = userResponse.data;
+
+    // Create session
+    const sessionId = generateRandomString(32);
+    sessions.set(sessionId, {
+      accessToken: access_token,
+      refreshToken: refresh_token,
+      expiresAt: Date.now() + expires_in * 1000,
+      user: {
+        id: user.id,
+        displayName: user.display_name,
+        email: user.email,
+        imageUrl: user.images?.[0]?.url,
+        product: user.product,
+      },
+    });
+
+    res.json({
+      sessionId,
+      user: sessions.get(sessionId).user,
+      expiresIn: expires_in,
+    });
+  } catch (error) {
+    console.error(
+      "Error exchanging code for token:",
+      error.response?.data || error.message
+    );
+    res.status(500).json({ error: "Failed to authenticate with Spotify" });
+  }
+});
+
+// Get current user (requires session)
+app.get("/api/auth/me", async (req, res) => {
+  const sessionId = req.headers.authorization?.replace("Bearer ", "");
+
+  if (!sessionId || !sessions.has(sessionId)) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const session = sessions.get(sessionId);
+
+  // Check if token needs refresh
+  if (Date.now() > session.expiresAt - 60000) {
+    try {
+      const refreshResponse = await axios.post(
+        "https://accounts.spotify.com/api/token",
+        new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: session.refreshToken,
+        }),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization:
+              "Basic " +
+              Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
+          },
+        }
+      );
+
+      session.accessToken = refreshResponse.data.access_token;
+      session.expiresAt =
+        Date.now() + refreshResponse.data.expires_in * 1000;
+      if (refreshResponse.data.refresh_token) {
+        session.refreshToken = refreshResponse.data.refresh_token;
+      }
+    } catch (error) {
+      console.error("Error refreshing token:", error.response?.data);
+      sessions.delete(sessionId);
+      return res.status(401).json({ error: "Session expired" });
+    }
+  }
+
+  res.json({ user: session.user });
+});
+
+// Logout
+app.post("/api/auth/logout", (req, res) => {
+  const sessionId = req.headers.authorization?.replace("Bearer ", "");
+
+  if (sessionId) {
+    sessions.delete(sessionId);
+  }
+
+  res.json({ success: true });
+});
+
+// Get access token for authenticated user (for Spotify Web Playback SDK)
+app.get("/api/auth/token", (req, res) => {
+  const sessionId = req.headers.authorization?.replace("Bearer ", "");
+
+  if (!sessionId || !sessions.has(sessionId)) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const session = sessions.get(sessionId);
+  res.json({ accessToken: session.accessToken });
 });
 
 // ============ SPOTIFY API ROUTES (Client Credentials - No Login Required) ============
@@ -96,20 +246,25 @@ app.get("/api/spotify/playlist/:id", async (req, res) => {
       `https://api.spotify.com/v1/playlists/${req.params.id}`,
       {
         headers: { Authorization: `Bearer ${token}` },
-        params: { market: "US" }, // Add market for regional content
+        params: { market: "US" },
       }
     );
     res.json(playlistRes.data);
   } catch (error) {
-    console.error("Error fetching playlist:", error.response?.data || error.message);
-    
+    console.error(
+      "Error fetching playlist:",
+      error.response?.data || error.message
+    );
+
     if (error.response?.status === 404) {
-      return res.status(404).json({ error: "Playlist not found or not available in your region" });
+      return res
+        .status(404)
+        .json({ error: "Playlist not found or not available in your region" });
     }
     if (error.response?.status === 400) {
       return res.status(400).json({ error: "Invalid playlist ID" });
     }
-    
+
     res.status(500).json({ error: "Failed to fetch playlist" });
   }
 });
@@ -126,7 +281,10 @@ app.get("/api/spotify/track/:id", async (req, res) => {
     );
     res.json(trackRes.data);
   } catch (error) {
-    console.error("Error fetching track:", error.response?.data || error.message);
+    console.error(
+      "Error fetching track:",
+      error.response?.data || error.message
+    );
     res.status(500).json({ error: "Failed to fetch track" });
   }
 });
@@ -144,12 +302,15 @@ app.get("/api/spotify/album/:id", async (req, res) => {
     );
     res.json(albumRes.data);
   } catch (error) {
-    console.error("Error fetching album:", error.response?.data || error.message);
-    
+    console.error(
+      "Error fetching album:",
+      error.response?.data || error.message
+    );
+
     if (error.response?.status === 404) {
       return res.status(404).json({ error: "Album not found" });
     }
-    
+
     res.status(500).json({ error: "Failed to fetch album" });
   }
 });
@@ -188,12 +349,18 @@ app.get("/api/spotify/featured", async (req, res) => {
     );
     res.json(featuredRes.data);
   } catch (error) {
-    console.error("Error fetching featured playlists:", error.response?.data || error.message);
+    console.error(
+      "Error fetching featured playlists:",
+      error.response?.data || error.message
+    );
     res.status(500).json({ error: "Failed to fetch featured playlists" });
   }
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log("Using Spotify Client Credentials Flow (no login required)");
+  console.log(`Frontend URL: ${FRONTEND_URL}`);
+  console.log(`Redirect URI: ${redirectUri}`);
+  console.log("\nMake sure to add this redirect URI to your Spotify app:");
+  console.log(`  ${redirectUri}`);
 });
