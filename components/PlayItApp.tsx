@@ -277,6 +277,19 @@ export default function PlayItApp() {
   const [votingTracks, setVotingTracks] = useState<SpotifyTrackSimple[]>([]);
   const [spotifyVotes, setSpotifyVotes] = useState<Record<string, number>>({});
 
+  // Sync state
+  const [syncState, setSyncState] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [createdPlaylist, setCreatedPlaylist] = useState<{
+    name: string;
+    url: string;
+    tracks_added: number;
+  } | null>(null);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [playlistName, setPlaylistName] = useState("");
+
   const isLoggedIn = !!user;
 
   // Check for OAuth callback on page load
@@ -343,14 +356,88 @@ export default function PlayItApp() {
     handleCallback();
   }, []);
 
-  // Handle Sync button click
+  // Handle Sync button click - opens modal
   const handleSync = () => {
     if (!isLoggedIn) {
       setShowLoginModal(true);
     } else {
-      // TODO: Perform sync action (e.g., create Spotify playlist)
-      console.log("Syncing...", votingTracks);
+      // Generate default playlist name with date
+      const date = new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      setPlaylistName(`PlayIt Session - ${date}`);
+      setSyncState("idle");
+      setSyncError(null);
+      setCreatedPlaylist(null);
+      setShowSyncModal(true);
     }
+  };
+
+  // Actually create the playlist
+  const createPlaylist = async () => {
+    if (!playlistName.trim()) return;
+
+    const sessionId = localStorage.getItem("sessionId");
+    if (!sessionId) {
+      setSyncError("Session not found. Please log in again.");
+      setSyncState("error");
+      return;
+    }
+
+    setSyncState("loading");
+    setSyncError(null);
+
+    try {
+      // Get tracks sorted by votes (highest first)
+      const sortedTracks = [...votingTracks].sort(
+        (a, b) => (spotifyVotes[b.id] || 0) - (spotifyVotes[a.id] || 0)
+      );
+
+      // Create track URIs
+      const trackUris = sortedTracks.map((t) => `spotify:track:${t.id}`);
+
+      const response = await fetch("/api/spotify/playlist/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionId}`,
+        },
+        body: JSON.stringify({
+          name: playlistName.trim(),
+          description: `Created with PlayIt - ${sortedTracks.length} tracks sorted by votes`,
+          trackUris,
+          public: false,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to create playlist");
+      }
+
+      const data = await response.json();
+      setCreatedPlaylist({
+        name: data.playlist.name,
+        url: data.playlist.external_urls?.spotify || "",
+        tracks_added: data.playlist.tracks_added,
+      });
+      setSyncState("success");
+    } catch (error) {
+      console.error("Sync error:", error);
+      setSyncError(
+        error instanceof Error ? error.message : "Failed to create playlist"
+      );
+      setSyncState("error");
+    }
+  };
+
+  // Close sync modal and reset
+  const closeSyncModal = () => {
+    setShowSyncModal(false);
+    setSyncState("idle");
+    setSyncError(null);
   };
 
   // Handle Spotify login - redirect to Spotify OAuth
@@ -887,7 +974,99 @@ export default function PlayItApp() {
           </div>
         </div>
       )}
+
+      {/* Sync/Create Playlist Modal */}
+      {showSyncModal && (
+        <div className="modal-overlay" onClick={closeSyncModal}>
+          <div className="sync-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeSyncModal}>
+              ×
+            </button>
+
+            {syncState === "success" && createdPlaylist ? (
+              <div className="sync-content sync-success">
+                <div className="success-icon">✓</div>
+                <h2>Playlist Created!</h2>
+                <p className="playlist-info">
+                  <strong>{createdPlaylist.name}</strong>
+                  <br />
+                  {createdPlaylist.tracks_added} tracks added
+                </p>
+                {createdPlaylist.url && (
+                  <a
+                    href={createdPlaylist.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="open-spotify-btn"
+                  >
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                      <circle cx="12" cy="12" r="12" fill="#1DB954" />
+                      <path
+                        d="M17.9 10.9C14.7 9 9.4 8.8 6.4 9.7c-.5.1-1-.2-1.1-.7-.1-.5.2-1 .7-1.1 3.4-1.1 9.2-.9 12.8 1.3.5.3.6.9.3 1.4-.3.4-.9.5-1.2.3zm-.2 2.9c-.2.4-.7.5-1 .3-2.7-1.7-6.8-2.2-10-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.2-.6 11.3 1.4.3.2.4.7.2 1zm-1.2 2.8c-.2.3-.5.4-.8.2-2.4-1.4-5.3-1.7-8.8-.9-.3.1-.6-.2-.7-.5-.1-.3.2-.6.5-.7 3.8-.9 7.1-.5 9.7 1.1.3.2.4.5.1.8z"
+                        fill="white"
+                      />
+                    </svg>
+                    Open in Spotify
+                  </a>
+                )}
+                <button className="done-btn" onClick={closeSyncModal}>
+                  Done
+                </button>
+              </div>
+            ) : (
+              <div className="sync-content">
+                <div className="spotify-logo">
+                  <svg viewBox="0 0 24 24" width="48" height="48">
+                    <circle cx="12" cy="12" r="12" fill="#1DB954" />
+                    <path
+                      d="M17.9 10.9C14.7 9 9.4 8.8 6.4 9.7c-.5.1-1-.2-1.1-.7-.1-.5.2-1 .7-1.1 3.4-1.1 9.2-.9 12.8 1.3.5.3.6.9.3 1.4-.3.4-.9.5-1.2.3zm-.2 2.9c-.2.4-.7.5-1 .3-2.7-1.7-6.8-2.2-10-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.2-.6 11.3 1.4.3.2.4.7.2 1zm-1.2 2.8c-.2.3-.5.4-.8.2-2.4-1.4-5.3-1.7-8.8-.9-.3.1-.6-.2-.7-.5-.1-.3.2-.6.5-.7 3.8-.9 7.1-.5 9.7 1.1.3.2.4.5.1.8z"
+                      fill="white"
+                    />
+                  </svg>
+                </div>
+                <h2>Create Spotify Playlist</h2>
+                <p className="sync-desc">
+                  Create a new playlist with {voteableSongs.length} tracks
+                  sorted by votes
+                </p>
+
+                <div className="playlist-name-input">
+                  <label htmlFor="playlist-name">Playlist Name</label>
+                  <input
+                    id="playlist-name"
+                    type="text"
+                    value={playlistName}
+                    onChange={(e) => setPlaylistName(e.target.value)}
+                    placeholder="Enter playlist name..."
+                    disabled={syncState === "loading"}
+                  />
+                </div>
+
+                {syncError && (
+                  <div className="sync-error">
+                    <span>❌</span> {syncError}
+                  </div>
+                )}
+
+                <button
+                  className="create-playlist-btn"
+                  onClick={createPlaylist}
+                  disabled={syncState === "loading" || !playlistName.trim()}
+                >
+                  {syncState === "loading" ? (
+                    <>
+                      <span className="spinner"></span>
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Playlist"
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
