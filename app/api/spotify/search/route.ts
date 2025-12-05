@@ -4,8 +4,8 @@ import { getSpotifyToken } from "@/lib/spotify";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q");
-  const type = searchParams.get("type") || "playlist";
-  const limit = searchParams.get("limit") || "20";
+  const type = searchParams.get("type") || "track,album,playlist,artist";
+  const limit = searchParams.get("limit") || "10";
 
   if (!q) {
     return NextResponse.json(

@@ -117,8 +117,6 @@ interface VoteableSong {
   votes: number;
 }
 
-type SearchType = "track" | "album" | "playlist" | "artist";
-
 // Polling interval for queue updates (2 seconds)
 const POLL_INTERVAL = 2000;
 
@@ -291,7 +289,6 @@ export default function PlayItApp() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<SearchType>("track");
   const [searchResults, setSearchResults] = useState<SearchResults | null>(
     null
   );
@@ -601,7 +598,7 @@ export default function PlayItApp() {
   };
 
   // Search Spotify (can be called directly or via form submit)
-  const performSearch = useCallback(async (query: string, type: SearchType) => {
+  const performSearch = useCallback(async (query: string) => {
     if (!query.trim() || query.trim().length < 3) return;
 
     setSearching(true);
@@ -611,9 +608,7 @@ export default function PlayItApp() {
 
     try {
       const res = await fetch(
-        `/api/spotify/search?q=${encodeURIComponent(
-          query
-        )}&type=${type}&limit=20`
+        `/api/spotify/search?q=${encodeURIComponent(query)}`
       );
       if (!res.ok) throw new Error("Search failed");
       const data = await res.json();
@@ -629,18 +624,18 @@ export default function PlayItApp() {
   // Auto-search when debounced query changes (3+ characters)
   useEffect(() => {
     if (debouncedSearchQuery.trim().length >= 3) {
-      performSearch(debouncedSearchQuery, searchType);
+      performSearch(debouncedSearchQuery);
     } else if (debouncedSearchQuery.trim().length === 0) {
       // Clear results when query is empty
       setSearchResults(null);
     }
-  }, [debouncedSearchQuery, searchType, performSearch]);
+  }, [debouncedSearchQuery, performSearch]);
 
   // Manual search (form submit) - immediate, no debounce
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim().length >= 3) {
-      performSearch(searchQuery, searchType);
+      performSearch(searchQuery);
     }
   };
 
@@ -789,13 +784,6 @@ export default function PlayItApp() {
     }
   };
 
-  const searchTypes: { value: SearchType; label: string }[] = [
-    { value: "track", label: "Songs" },
-    { value: "album", label: "Albums" },
-    { value: "playlist", label: "Playlists" },
-    { value: "artist", label: "Artists" },
-  ];
-
   return (
     <div className="app">
       <header className="header">
@@ -845,20 +833,6 @@ export default function PlayItApp() {
                 {searching ? "..." : "Search"}
               </button>
             </form>
-
-            <div className="search-type-tabs">
-              {searchTypes.map((type) => (
-                <button
-                  key={type.value}
-                  className={`type-tab ${
-                    searchType === type.value ? "active" : ""
-                  }`}
-                  onClick={() => setSearchType(type.value)}
-                >
-                  {type.label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {searchError && (
@@ -877,57 +851,46 @@ export default function PlayItApp() {
             !selectedAlbum &&
             !searching && (
               <div className="search-results">
-                {searchType === "track" && searchResults.tracks && (
-                  <ul className="results-list">
-                    {searchResults.tracks.items.map((track) => (
-                      <TrackResultItem
-                        key={track.id}
-                        track={track}
-                        onSelect={addTrackToVoting}
-                        isAdded={votingTrackIds.has(track.id)}
-                      />
-                    ))}
-                  </ul>
-                )}
+                <ul className="results-list">
+                  {/* Tracks */}
+                  {searchResults.tracks?.items.map((track) => (
+                    <TrackResultItem
+                      key={`track-${track.id}`}
+                      track={track}
+                      onSelect={addTrackToVoting}
+                      isAdded={votingTrackIds.has(track.id)}
+                    />
+                  ))}
 
-                {searchType === "album" && searchResults.albums && (
-                  <ul className="results-list">
-                    {searchResults.albums.items.map((album) => (
-                      <AlbumResultItem
-                        key={album.id}
-                        album={album}
-                        onSelect={loadAlbum}
-                      />
-                    ))}
-                  </ul>
-                )}
+                  {/* Albums */}
+                  {searchResults.albums?.items.map((album) => (
+                    <AlbumResultItem
+                      key={`album-${album.id}`}
+                      album={album}
+                      onSelect={loadAlbum}
+                    />
+                  ))}
 
-                {searchType === "playlist" && searchResults.playlists && (
-                  <ul className="results-list">
-                    {searchResults.playlists.items.map((playlist) => (
-                      <PlaylistResultItem
-                        key={playlist.id}
-                        playlist={playlist}
-                        onSelect={loadPlaylist}
-                      />
-                    ))}
-                  </ul>
-                )}
+                  {/* Playlists */}
+                  {searchResults.playlists?.items.map((playlist) => (
+                    <PlaylistResultItem
+                      key={`playlist-${playlist.id}`}
+                      playlist={playlist}
+                      onSelect={loadPlaylist}
+                    />
+                  ))}
 
-                {searchType === "artist" && searchResults.artists && (
-                  <ul className="results-list">
-                    {searchResults.artists.items.map((artist) => (
-                      <ArtistResultItem
-                        key={artist.id}
-                        artist={artist}
-                        onSelect={() => {
-                          setSearchQuery(artist.name);
-                          setSearchType("track");
-                        }}
-                      />
-                    ))}
-                  </ul>
-                )}
+                  {/* Artists */}
+                  {searchResults.artists?.items.map((artist) => (
+                    <ArtistResultItem
+                      key={`artist-${artist.id}`}
+                      artist={artist}
+                      onSelect={() => {
+                        setSearchQuery(artist.name);
+                      }}
+                    />
+                  ))}
+                </ul>
               </div>
             )}
 
