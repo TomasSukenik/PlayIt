@@ -15,7 +15,7 @@ export async function DELETE(
     );
   }
 
-  const removed = removeTrack(spotifyId);
+  const removed = await removeTrack(spotifyId);
   if (!removed) {
     return NextResponse.json(
       { error: "Track not found in queue" },
@@ -25,7 +25,6 @@ export async function DELETE(
 
   return NextResponse.json({
     success: true,
-    queue: getQueue(),
+    queue: await getQueue(),
   });
 }
-

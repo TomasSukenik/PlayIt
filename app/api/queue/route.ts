@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   if (since) {
     const sinceTimestamp = parseInt(since, 10);
     if (!isNaN(sinceTimestamp)) {
-      const queue = getQueueIfUpdated(sinceTimestamp);
+      const queue = await getQueueIfUpdated(sinceTimestamp);
       if (queue === null) {
         return NextResponse.json({ updated: false });
       }
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const queue = getQueue();
+  const queue = await getQueue();
   return NextResponse.json(queue);
 }
 
@@ -35,17 +35,17 @@ export async function POST(request: NextRequest) {
 
     // Handle bulk add with replace
     if (body.tracks && Array.isArray(body.tracks)) {
-      const added = addTracks(body.tracks, body.replaceAll === true);
+      const added = await addTracks(body.tracks, body.replaceAll === true);
       return NextResponse.json({
         success: true,
         added: added.length,
-        queue: getQueue(),
+        queue: await getQueue(),
       });
     }
 
     // Handle single track add
     if (body.spotifyId) {
-      const track = addTrack({
+      const track = await addTrack({
         spotifyId: body.spotifyId,
         name: body.name,
         artists: body.artists,
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         track,
-        queue: getQueue(),
+        queue: await getQueue(),
       });
     }
 
@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
 
 // DELETE /api/queue - Clear the entire queue
 export async function DELETE() {
-  clearQueue();
-  return NextResponse.json({ success: true, queue: getQueue() });
+  await clearQueue();
+  return NextResponse.json({ success: true, queue: await getQueue() });
 }
-

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const track = upvoteTrack(spotifyId);
+    const track = await upvoteTrack(spotifyId);
     if (!track) {
       return NextResponse.json(
         { error: "Track not found in queue" },
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       track,
-      queue: getQueue(),
+      queue: await getQueue(),
     });
   } catch (error) {
     console.error("Error upvoting track:", error);
@@ -35,4 +35,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
