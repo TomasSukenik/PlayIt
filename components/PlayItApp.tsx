@@ -2,6 +2,23 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 // User type from Spotify
 interface SpotifyUser {
   id: string;
@@ -280,6 +297,9 @@ export default function PlayItApp() {
   );
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+
+  // Debounced search query (300ms delay)
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Selected content state
   const [selectedPlaylist, setSelectedPlaylist] =
@@ -580,10 +600,9 @@ export default function PlayItApp() {
     }
   };
 
-  // Search Spotify
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
+  // Search Spotify (can be called directly or via form submit)
+  const performSearch = useCallback(async (query: string, type: SearchType) => {
+    if (!query.trim() || query.trim().length < 3) return;
 
     setSearching(true);
     setSearchError(null);
@@ -593,8 +612,8 @@ export default function PlayItApp() {
     try {
       const res = await fetch(
         `/api/spotify/search?q=${encodeURIComponent(
-          searchQuery
-        )}&type=${searchType}&limit=20`
+          query
+        )}&type=${type}&limit=20`
       );
       if (!res.ok) throw new Error("Search failed");
       const data = await res.json();
@@ -604,6 +623,24 @@ export default function PlayItApp() {
       setSearchError("Failed to search. Please try again.");
     } finally {
       setSearching(false);
+    }
+  }, []);
+
+  // Auto-search when debounced query changes (3+ characters)
+  useEffect(() => {
+    if (debouncedSearchQuery.trim().length >= 3) {
+      performSearch(debouncedSearchQuery, searchType);
+    } else if (debouncedSearchQuery.trim().length === 0) {
+      // Clear results when query is empty
+      setSearchResults(null);
+    }
+  }, [debouncedSearchQuery, searchType, performSearch]);
+
+  // Manual search (form submit) - immediate, no debounce
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim().length >= 3) {
+      performSearch(searchQuery, searchType);
     }
   };
 
@@ -797,13 +834,13 @@ export default function PlayItApp() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search songs, albums, playlists..."
+                placeholder="Type 3+ characters to search..."
                 className="search-input"
               />
               <button
                 type="submit"
                 className="search-btn"
-                disabled={searching || !searchQuery.trim()}
+                disabled={searching || searchQuery.trim().length < 3}
               >
                 {searching ? "..." : "Search"}
               </button>
