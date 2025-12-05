@@ -1,3 +1,5 @@
+import { kv } from "@vercel/kv";
+
 // Spotify token cache for Client Credentials flow
 let cachedToken: string | null = null;
 let tokenExpiry = 0;
@@ -34,7 +36,8 @@ export async function getSpotifyToken(): Promise<string> {
 
 // Generate random string for state parameter
 export function generateRandomString(length: number): string {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const chars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
   const randomValues = new Uint8Array(length);
   crypto.getRandomValues(randomValues);
@@ -44,9 +47,8 @@ export function generateRandomString(length: number): string {
   return result;
 }
 
-// In-memory session store (in production, use a proper session store like Redis)
-// Note: This will reset on each deployment/restart
-interface Session {
+// Session stored in Vercel KV (Redis) for persistence across serverless invocations
+export interface Session {
   accessToken?: string;
   refreshToken?: string;
   expiresAt?: number;
@@ -60,21 +62,24 @@ interface Session {
   created?: number;
 }
 
-const sessions = new Map<string, Session>();
+const SESSION_PREFIX = "playit:session:";
+const SESSION_TTL = 60 * 60 * 24; // 24 hours in seconds
 
-export function getSession(sessionId: string): Session | undefined {
-  return sessions.get(sessionId);
+export async function getSession(
+  sessionId: string
+): Promise<Session | undefined> {
+  const session = await kv.get<Session>(`${SESSION_PREFIX}${sessionId}`);
+  return session ?? undefined;
 }
 
-export function setSession(sessionId: string, session: Session): void {
-  sessions.set(sessionId, session);
+export async function setSession(
+  sessionId: string,
+  session: Session
+): Promise<void> {
+  await kv.set(`${SESSION_PREFIX}${sessionId}`, session, { ex: SESSION_TTL });
 }
 
-export function deleteSession(sessionId: string): void {
-  sessions.delete(sessionId);
-}
-
-export function hasSession(sessionId: string): boolean {
-  return sessions.has(sessionId);
+export async function deleteSession(sessionId: string): Promise<void> {
+  await kv.del(`${SESSION_PREFIX}${sessionId}`);
 }
 

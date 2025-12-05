@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Create session
     const sessionId = generateRandomString(32);
-    setSession(sessionId, {
+    const sessionData = {
       accessToken: access_token,
       refreshToken: refresh_token,
       expiresAt: Date.now() + expires_in * 1000,
@@ -66,11 +66,12 @@ export async function POST(request: NextRequest) {
         imageUrl: user.images?.[0]?.url,
         product: user.product,
       },
-    });
+    };
+    await setSession(sessionId, sessionData);
 
     return NextResponse.json({
       sessionId,
-      user: getSession(sessionId)?.user,
+      user: sessionData.user,
       expiresIn: expires_in,
     });
   } catch (error) {

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   }
 
   const sessionId = authHeader.replace("Bearer ", "");
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
 
   if (!session?.accessToken || !session?.user?.id) {
     return NextResponse.json(

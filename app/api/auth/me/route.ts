@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, setSession, deleteSession } from "@/lib/spotify";
 
 export async function GET(request: NextRequest) {
-  const sessionId = request.headers.get("authorization")?.replace("Bearer ", "");
+  const sessionId = request.headers
+    .get("authorization")
+    ?.replace("Bearer ", "");
 
-  if (!sessionId || !getSession(sessionId)) {
+  if (!sessionId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const session = getSession(sessionId)!;
+  const session = await getSession(sessionId);
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   const clientId = process.env.SPOTIFY_CLIENT_ID!;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET!;
 
@@ -33,7 +39,7 @@ export async function GET(request: NextRequest) {
       );
 
       if (!refreshResponse.ok) {
-        deleteSession(sessionId);
+        await deleteSession(sessionId);
         return NextResponse.json({ error: "Session expired" }, { status: 401 });
       }
 
@@ -43,10 +49,10 @@ export async function GET(request: NextRequest) {
       if (refreshData.refresh_token) {
         session.refreshToken = refreshData.refresh_token;
       }
-      setSession(sessionId, session);
+      await setSession(sessionId, session);
     } catch (error) {
       console.error("Error refreshing token:", error);
-      deleteSession(sessionId);
+      await deleteSession(sessionId);
       return NextResponse.json({ error: "Session expired" }, { status: 401 });
     }
   }
