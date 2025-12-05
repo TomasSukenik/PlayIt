@@ -123,7 +123,7 @@ body {
 .main-layout {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 1fr;
   gap: 0;
   min-height: 0;
 }
@@ -1169,17 +1169,15 @@ body {
 @media (max-width: 900px) {
   .main-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-rows: 1fr 1fr;
   }
 
   .search-panel {
     border-right: none;
     border-bottom: 1px solid #1f1f22;
-    max-height: 60vh;
   }
 
   .voting-panel {
-    max-height: 40vh;
   }
 }
 
