@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // User type from Spotify
 interface SpotifyUser {
@@ -79,6 +79,19 @@ interface SearchResults {
   artists?: { items: SpotifyArtist[] };
 }
 
+// Server-side queued track
+interface QueuedTrack {
+  id: string;
+  spotifyId: string;
+  name: string;
+  artists: string;
+  albumName: string;
+  albumArt?: string;
+  duration_ms: number;
+  votes: number;
+  addedAt: number;
+}
+
 interface VoteableSong {
   spotifyId: string;
   title: string;
@@ -88,6 +101,9 @@ interface VoteableSong {
 }
 
 type SearchType = "track" | "album" | "playlist" | "artist";
+
+// Polling interval for queue updates (2 seconds)
+const POLL_INTERVAL = 2000;
 
 // Helper to format duration
 const formatDuration = (ms: number) => {
@@ -273,9 +289,11 @@ export default function PlayItApp() {
   );
   const [loadingContent, setLoadingContent] = useState(false);
 
-  // Voting state
-  const [votingTracks, setVotingTracks] = useState<SpotifyTrackSimple[]>([]);
-  const [spotifyVotes, setSpotifyVotes] = useState<Record<string, number>>({});
+  // Voting queue state (synced with server)
+  const [queuedTracks, setQueuedTracks] = useState<QueuedTrack[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<number>(0);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync state
   const [syncState, setSyncState] = useState<
@@ -356,6 +374,59 @@ export default function PlayItApp() {
     handleCallback();
   }, []);
 
+  // Fetch queue from server
+  const fetchQueue = useCallback(async (since?: number) => {
+    try {
+      const url = since ? `/api/queue?since=${since}` : "/api/queue";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch queue");
+      const data = await res.json();
+
+      // If using "since" parameter and no update, skip
+      if (since && data.updated === false) {
+        return false;
+      }
+
+      setQueuedTracks(data.tracks || []);
+      setLastUpdated(data.lastUpdated || Date.now());
+      return true;
+    } catch (error) {
+      console.error("Error fetching queue:", error);
+      return false;
+    }
+  }, []);
+
+  // Initial queue fetch
+  useEffect(() => {
+    const initQueue = async () => {
+      setQueueLoading(true);
+      await fetchQueue();
+      setQueueLoading(false);
+    };
+    initQueue();
+  }, [fetchQueue]);
+
+  // Poll for queue updates
+  useEffect(() => {
+    const poll = async () => {
+      if (lastUpdated > 0) {
+        await fetchQueue(lastUpdated);
+      }
+      pollTimeoutRef.current = setTimeout(poll, POLL_INTERVAL);
+    };
+
+    // Start polling after initial load
+    if (!queueLoading && lastUpdated > 0) {
+      pollTimeoutRef.current = setTimeout(poll, POLL_INTERVAL);
+    }
+
+    return () => {
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+      }
+    };
+  }, [queueLoading, lastUpdated, fetchQueue]);
+
   // Handle Sync button click - opens modal
   const handleSync = () => {
     if (!isLoggedIn) {
@@ -390,13 +461,8 @@ export default function PlayItApp() {
     setSyncError(null);
 
     try {
-      // Get tracks sorted by votes (highest first)
-      const sortedTracks = [...votingTracks].sort(
-        (a, b) => (spotifyVotes[b.id] || 0) - (spotifyVotes[a.id] || 0)
-      );
-
-      // Create track URIs
-      const trackUris = sortedTracks.map((t) => `spotify:track:${t.id}`);
+      // Tracks are already sorted by votes from server
+      const trackUris = queuedTracks.map((t) => `spotify:track:${t.spotifyId}`);
 
       const response = await fetch("/api/spotify/playlist/create", {
         method: "POST",
@@ -406,7 +472,7 @@ export default function PlayItApp() {
         },
         body: JSON.stringify({
           name: playlistName.trim(),
-          description: `Created with PlayIt - ${sortedTracks.length} tracks sorted by votes`,
+          description: `Created with PlayIt - ${queuedTracks.length} tracks sorted by votes`,
           trackUris,
           public: false,
         }),
@@ -468,30 +534,50 @@ export default function PlayItApp() {
     setUser(null);
   };
 
-  // Track IDs that are in the voting list
-  const votingTrackIds = new Set(votingTracks.map((t) => t.id));
+  // Track IDs that are in the voting list (from server queue)
+  const votingTrackIds = new Set(queuedTracks.map((t) => t.spotifyId));
 
-  // Convert tracks to voteable songs (limited to 30)
-  const voteableSongs: VoteableSong[] = votingTracks
-    .slice(0, 30)
-    .map((track) => ({
-      spotifyId: track.id,
-      title: track.name,
-      artist: track.artists.map((a) => a.name).join(", "),
-      albumArt: track.album?.images?.[2]?.url,
-      votes: spotifyVotes[track.id] || 0,
-    }))
-    .sort((a, b) => b.votes - a.votes);
+  // Convert queued tracks to voteable songs (already sorted by votes from server)
+  const voteableSongs: VoteableSong[] = queuedTracks.map((track) => ({
+    spotifyId: track.spotifyId,
+    title: track.name,
+    artist: track.artists,
+    albumArt: track.albumArt,
+    votes: track.votes,
+  }));
 
-  const handleSpotifyUpvote = (spotifyId: string) => {
-    setSpotifyVotes((prev) => ({
-      ...prev,
-      [spotifyId]: (prev[spotifyId] || 0) + 1,
-    }));
+  // Upvote a track (calls server API)
+  const handleSpotifyUpvote = async (spotifyId: string) => {
+    try {
+      const res = await fetch("/api/queue/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spotifyId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQueuedTracks(data.queue.tracks);
+        setLastUpdated(data.queue.lastUpdated);
+      }
+    } catch (error) {
+      console.error("Error upvoting:", error);
+    }
   };
 
-  const handleRemoveTrack = (spotifyId: string) => {
-    setVotingTracks((prev) => prev.filter((t) => t.id !== spotifyId));
+  // Remove a track from the queue (calls server API)
+  const handleRemoveTrack = async (spotifyId: string) => {
+    try {
+      const res = await fetch(`/api/queue/${spotifyId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQueuedTracks(data.queue.tracks);
+        setLastUpdated(data.queue.lastUpdated);
+      }
+    } catch (error) {
+      console.error("Error removing track:", error);
+    }
   };
 
   // Search Spotify
@@ -557,34 +643,91 @@ export default function PlayItApp() {
     }
   };
 
-  // Add single track to voting
-  const addTrackToVoting = (track: SpotifyTrackSimple) => {
-    if (votingTracks.some((t) => t.id === track.id)) return;
-    if (votingTracks.length >= 30) return; // Max 30 tracks
-    setVotingTracks((prev) => [...prev, track]);
+  // Add single track to voting (calls server API)
+  const addTrackToVoting = async (track: SpotifyTrackSimple) => {
+    if (queuedTracks.some((t) => t.spotifyId === track.id)) return;
+    if (queuedTracks.length >= 30) return; // Max 30 tracks
+
+    try {
+      const res = await fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spotifyId: track.id,
+          name: track.name,
+          artists: track.artists.map((a) => a.name).join(", "),
+          albumName: track.album?.name || "",
+          albumArt: track.album?.images?.[2]?.url,
+          duration_ms: track.duration_ms,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQueuedTracks(data.queue.tracks);
+        setLastUpdated(data.queue.lastUpdated);
+      }
+    } catch (error) {
+      console.error("Error adding track:", error);
+    }
   };
 
-  // Load all tracks from playlist to voting
-  const loadPlaylistToVoting = (playlist: SpotifyPlaylistFull) => {
+  // Load all tracks from playlist to voting (calls server API)
+  const loadPlaylistToVoting = async (playlist: SpotifyPlaylistFull) => {
     const tracks = playlist.tracks.items
       .filter((item) => item.track)
-      .map((item) => item.track)
-      .slice(0, 30);
-    setVotingTracks(tracks);
-    setSpotifyVotes({});
-  };
-
-  // Load all tracks from album to voting
-  const loadAlbumToVoting = (album: SpotifyAlbumFull) => {
-    const tracks: SpotifyTrackSimple[] = album.tracks.items
-      .map((t) => ({
-        ...t,
-        album: album,
-        external_urls: { spotify: "" },
+      .map((item) => ({
+        spotifyId: item.track.id,
+        name: item.track.name,
+        artists: item.track.artists.map((a) => a.name).join(", "),
+        albumName: item.track.album?.name || "",
+        albumArt: item.track.album?.images?.[2]?.url,
+        duration_ms: item.track.duration_ms,
       }))
       .slice(0, 30);
-    setVotingTracks(tracks);
-    setSpotifyVotes({});
+
+    try {
+      const res = await fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tracks, replaceAll: true }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQueuedTracks(data.queue.tracks);
+        setLastUpdated(data.queue.lastUpdated);
+      }
+    } catch (error) {
+      console.error("Error loading playlist to voting:", error);
+    }
+  };
+
+  // Load all tracks from album to voting (calls server API)
+  const loadAlbumToVoting = async (album: SpotifyAlbumFull) => {
+    const tracks = album.tracks.items
+      .map((t) => ({
+        spotifyId: t.id,
+        name: t.name,
+        artists: t.artists.map((a) => a.name).join(", "),
+        albumName: album.name,
+        albumArt: album.images?.[2]?.url,
+        duration_ms: t.duration_ms,
+      }))
+      .slice(0, 30);
+
+    try {
+      const res = await fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tracks, replaceAll: true }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQueuedTracks(data.queue.tracks);
+        setLastUpdated(data.queue.lastUpdated);
+      }
+    } catch (error) {
+      console.error("Error loading album to voting:", error);
+    }
   };
 
   // Clear selection and go back to search
@@ -593,9 +736,20 @@ export default function PlayItApp() {
     setSelectedAlbum(null);
   };
 
-  const clearVotingList = () => {
-    setVotingTracks([]);
-    setSpotifyVotes({});
+  // Clear the voting queue (calls server API)
+  const clearVotingList = async () => {
+    try {
+      const res = await fetch("/api/queue", {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQueuedTracks(data.queue.tracks);
+        setLastUpdated(data.queue.lastUpdated);
+      }
+    } catch (error) {
+      console.error("Error clearing queue:", error);
+    }
   };
 
   const searchTypes: { value: SearchType; label: string }[] = [
@@ -894,7 +1048,16 @@ export default function PlayItApp() {
         {/* Voting Panel */}
         <section className="voting-panel">
           <div className="voting-header">
-            <h2>Voting Queue</h2>
+            <div className="voting-title">
+              <h2>Voting Queue</h2>
+              <span
+                className="live-indicator"
+                title="Shared across all devices"
+              >
+                <span className="live-dot"></span>
+                LIVE
+              </span>
+            </div>
             <div className="voting-actions">
               {voteableSongs.length > 0 && (
                 <>
@@ -909,9 +1072,15 @@ export default function PlayItApp() {
             </div>
           </div>
 
-          {voteableSongs.length > 0 ? (
+          {queueLoading ? (
+            <div className="empty-voting">
+              <p>Loading queue...</p>
+            </div>
+          ) : voteableSongs.length > 0 ? (
             <>
-              <p className="song-count">{voteableSongs.length} songs</p>
+              <p className="song-count">
+                {voteableSongs.length} songs • shared with all users
+              </p>
               <ul className="song-list">
                 {voteableSongs.map((song, index) => (
                   <VoteableSongItem
@@ -1026,8 +1195,8 @@ export default function PlayItApp() {
                 </div>
                 <h2>Create Spotify Playlist</h2>
                 <p className="sync-desc">
-                  Create a new playlist with {voteableSongs.length} tracks
-                  sorted by votes
+                  Create a new playlist with {queuedTracks.length} tracks sorted
+                  by votes
                 </p>
 
                 <div className="playlist-name-input">

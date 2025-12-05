@@ -571,9 +571,47 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.voting-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .voting-header h2 {
   font-size: 1rem;
   font-weight: 600;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--spotify-green);
+  background: rgba(29, 185, 84, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--spotify-green);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
 }
 
 .voting-actions {
