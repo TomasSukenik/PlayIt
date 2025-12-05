@@ -15,6 +15,11 @@ interface SpotifyPlaylist {
   owner: { id: string };
 }
 
+interface PlaylistsResponse {
+  items: SpotifyPlaylist[];
+  next: string | null;
+}
+
 // Find existing playlist by name owned by the user
 async function findExistingPlaylist(
   accessToken: string,
@@ -24,7 +29,7 @@ async function findExistingPlaylist(
   let url: string | null = "https://api.spotify.com/v1/me/playlists?limit=50";
 
   while (url) {
-    const response = await fetch(url, {
+    const response: Response = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
@@ -32,7 +37,7 @@ async function findExistingPlaylist(
       return null;
     }
 
-    const data = await response.json();
+    const data: PlaylistsResponse = await response.json();
     const found = data.items?.find(
       (p: SpotifyPlaylist) =>
         p.name.toLowerCase() === playlistName.toLowerCase() &&
