@@ -228,6 +228,7 @@ function VoteableSongItem({
           <span className="vote-count">{song.votes}</span>
         </button>
         <button
+          style={{ display: "none" }}
           className="remove-btn"
           onClick={() => onRemove(song.spotifyId)}
           title="Remove"
