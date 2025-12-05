@@ -321,6 +321,7 @@ export default function PlayItApp() {
     name: string;
     url: string;
     tracks_added: number;
+    updated: boolean;
   } | null>(null);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [playlistName, setPlaylistName] = useState("");
@@ -505,6 +506,7 @@ export default function PlayItApp() {
         name: data.playlist.name,
         url: data.playlist.external_urls?.spotify || "",
         tracks_added: data.playlist.tracks_added,
+        updated: data.updated || false,
       });
       setSyncState("success");
     } catch (error) {
@@ -1163,11 +1165,14 @@ export default function PlayItApp() {
             {syncState === "success" && createdPlaylist ? (
               <div className="sync-content sync-success">
                 <div className="success-icon">✓</div>
-                <h2>Playlist Created!</h2>
+                <h2>
+                  Playlist {createdPlaylist.updated ? "Updated" : "Created"}!
+                </h2>
                 <p className="playlist-info">
                   <strong>{createdPlaylist.name}</strong>
                   <br />
-                  {createdPlaylist.tracks_added} tracks added
+                  {createdPlaylist.tracks_added} tracks{" "}
+                  {createdPlaylist.updated ? "synced" : "added"}
                 </p>
                 {createdPlaylist.url && (
                   <a
@@ -1201,10 +1206,10 @@ export default function PlayItApp() {
                     />
                   </svg>
                 </div>
-                <h2>Create Spotify Playlist</h2>
+                <h2>Sync to Spotify</h2>
                 <p className="sync-desc">
-                  Create a new playlist with {queuedTracks.length} tracks sorted
-                  by votes
+                  Creates a new playlist or updates existing one with{" "}
+                  {queuedTracks.length} tracks sorted by votes
                 </p>
 
                 <div className="playlist-name-input">
@@ -1233,10 +1238,10 @@ export default function PlayItApp() {
                   {syncState === "loading" ? (
                     <>
                       <span className="spinner"></span>
-                      Creating...
+                      Syncing...
                     </>
                   ) : (
-                    "Create Playlist"
+                    "Sync Playlist"
                   )}
                 </button>
               </div>
