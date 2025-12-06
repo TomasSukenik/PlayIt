@@ -482,7 +482,7 @@ export default function PlayItApp() {
       // Tracks are already sorted by votes from server
       const trackUris = queuedTracks.map((t) => `spotify:track:${t.spotifyId}`);
 
-      const response = await fetch("/api/spotify/playlist/create", {
+      const response = await fetch("/api/spotify/playlist/sync", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
