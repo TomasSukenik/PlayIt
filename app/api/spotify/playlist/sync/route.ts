@@ -28,29 +28,40 @@ async function findExistingPlaylist(
 ): Promise<SpotifyPlaylist | null> {
   let url: string | null = "https://api.spotify.com/v1/me/playlists?limit=50";
 
+  console.log(
+    `Looking for playlist "${playlistName}" owned by user "${userId}"`
+  );
+
   while (url) {
     const response: Response = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (!response.ok) {
+      console.error("Failed to fetch playlists:", response.status);
       return null;
     }
 
     const data: PlaylistsResponse = await response.json();
-    const found = data.items?.find(
-      (p: SpotifyPlaylist) =>
-        p.name.toLowerCase() === playlistName.toLowerCase() &&
-        p.owner.id === userId
-    );
+    const items = data.items?.filter((p) => p !== null) || [];
 
-    if (found) {
-      return found;
+    console.log(`Checking ${items.length} playlists...`);
+
+    for (const p of items) {
+      console.log(`  - "${p.name}" owned by "${p.owner?.id}"`);
+      if (
+        p.name.toLowerCase() === playlistName.toLowerCase() &&
+        p.owner?.id === userId
+      ) {
+        console.log(`Found matching playlist: ${p.id}`);
+        return p;
+      }
     }
 
     url = data.next;
   }
 
+  console.log("No matching playlist found, will create new one");
   return null;
 }
 
@@ -110,6 +121,7 @@ export async function POST(request: NextRequest) {
 
     if (existingPlaylist) {
       // Update existing playlist
+      console.log(`Updating existing playlist: ${existingPlaylist.id}`);
       playlist = existingPlaylist;
       isUpdate = true;
 
@@ -168,6 +180,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Create new playlist
+      console.log(`Creating new playlist: "${trimmedName}"`);
       const createPlaylistResponse = await fetch(
         `https://api.spotify.com/v1/users/${session.user.id}/playlists`,
         {
@@ -242,4 +255,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
