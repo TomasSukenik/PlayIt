@@ -1232,6 +1232,10 @@ body {
     height: 80vh;
   }
 
+  .voting-panel.dragging {
+    transition: none;
+  }
+
   .drawer-handle {
     display: flex;
     flex-direction: column;
@@ -1240,6 +1244,7 @@ body {
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    touch-action: none; /* Prevent default touch behavior for smooth dragging */
   }
 
   .drawer-handle-bar {

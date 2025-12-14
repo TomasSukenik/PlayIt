@@ -303,6 +303,104 @@ export default function PlayItApp() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const hasAutoOpenedDrawer = useRef(false);
 
+  // Drawer drag state
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragStartY = useRef(0);
+  const dragStartOpen = useRef(false);
+  const votingPanelRef = useRef<HTMLElement>(null);
+
+  // Constants for drawer heights (must match CSS)
+  const DRAWER_COLLAPSED_HEIGHT = 80;
+  const DRAWER_OPEN_HEIGHT_VH = 80; // 80vh
+  const DRAG_THRESHOLD = 50; // pixels to trigger open/close
+
+  // Touch handlers for drawer drag
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      // Only handle single touch
+      if (e.touches.length !== 1) return;
+
+      dragStartY.current = e.touches[0].clientY;
+      dragStartOpen.current = isDrawerOpen;
+      setIsDragging(true);
+      setDragOffset(0);
+    },
+    [isDrawerOpen]
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!isDragging) return;
+
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - dragStartY.current;
+
+      // Calculate the offset based on drag direction and current state
+      if (dragStartOpen.current) {
+        // Drawer is open - dragging down should close it
+        // Positive deltaY = dragging down = closing
+        // Clamp: can't drag above open position, can drag down to close
+        const maxDrag =
+          (window.innerHeight * DRAWER_OPEN_HEIGHT_VH) / 100 -
+          DRAWER_COLLAPSED_HEIGHT;
+        setDragOffset(Math.max(0, Math.min(deltaY, maxDrag)));
+      } else {
+        // Drawer is closed - dragging up should open it
+        // Negative deltaY = dragging up = opening
+        // Clamp: can't drag below collapsed position, can drag up to open
+        const maxDrag =
+          (window.innerHeight * DRAWER_OPEN_HEIGHT_VH) / 100 -
+          DRAWER_COLLAPSED_HEIGHT;
+        setDragOffset(Math.min(0, Math.max(deltaY, -maxDrag)));
+      }
+    },
+    [isDragging]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isDragging) return;
+
+    // Determine if we should open or close based on drag distance
+    if (dragStartOpen.current) {
+      // Was open - close if dragged down enough
+      if (dragOffset > DRAG_THRESHOLD) {
+        setIsDrawerOpen(false);
+      }
+    } else {
+      // Was closed - open if dragged up enough
+      if (dragOffset < -DRAG_THRESHOLD) {
+        setIsDrawerOpen(true);
+      }
+    }
+
+    setIsDragging(false);
+    setDragOffset(0);
+  }, [isDragging, dragOffset]);
+
+  // Calculate drawer height during drag
+  const getDrawerStyle = useCallback((): React.CSSProperties => {
+    if (!isDragging || dragOffset === 0) {
+      return {};
+    }
+
+    const openHeight = (window.innerHeight * DRAWER_OPEN_HEIGHT_VH) / 100;
+
+    let currentHeight: number;
+    if (dragStartOpen.current) {
+      // Starting from open position, dragging down decreases height
+      currentHeight = openHeight - dragOffset;
+    } else {
+      // Starting from collapsed position, dragging up increases height
+      currentHeight = DRAWER_COLLAPSED_HEIGHT - dragOffset;
+    }
+
+    return {
+      height: `${currentHeight}px`,
+      transition: "none",
+    };
+  }, [isDragging, dragOffset]);
+
   // Auto-open drawer on initial load if there are songs in the queue
   useEffect(() => {
     // Only auto-open once, after initial queue load completes
@@ -852,12 +950,19 @@ export default function PlayItApp() {
 
         {/* Voting Panel */}
         <section
-          className={`voting-panel ${isDrawerOpen ? "drawer-open" : ""}`}
+          ref={votingPanelRef}
+          className={`voting-panel ${isDrawerOpen ? "drawer-open" : ""} ${
+            isDragging ? "dragging" : ""
+          }`}
+          style={getDrawerStyle()}
         >
           {/* Mobile drawer handle */}
           <div
             className="drawer-handle"
-            onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+            onClick={() => !isDragging && setIsDrawerOpen(!isDrawerOpen)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
             <div className="drawer-handle-bar"></div>
             <div className="drawer-peek">
