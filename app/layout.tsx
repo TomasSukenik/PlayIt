@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PlayIt",
+  title: "ZAHRAJ ČOSI",
   description: "Search music & vote for what plays next",
 };
 
@@ -23,4 +23,3 @@ export default function RootLayout({
     </html>
   );
 }
-

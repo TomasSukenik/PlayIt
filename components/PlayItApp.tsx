@@ -456,7 +456,7 @@ export default function PlayItApp() {
         day: "numeric",
         year: "numeric",
       });
-      setPlaylistName(`PlayIt Session - ${date}`);
+      setPlaylistName(`ZAHRAJ ČOSI Session - ${date}`);
       setSyncState("idle");
       setSyncError(null);
       setCreatedPlaylist(null);
@@ -490,7 +490,7 @@ export default function PlayItApp() {
         },
         body: JSON.stringify({
           name: playlistName.trim(),
-          description: `Created with PlayIt - ${queuedTracks.length} tracks sorted by votes`,
+          description: `Created with ZAHRAJ ČOSI - ${queuedTracks.length} tracks sorted by votes`,
           trackUris,
           public: false,
         }),
@@ -790,7 +790,7 @@ export default function PlayItApp() {
     <div className="app">
       <header className="header">
         <div className="header-left">
-          <h1 className="logo">PlayIt</h1>
+          <h1 className="logo">ZAHRAJ ČOSI</h1>
           <p className="tagline">Search music & vote for what plays next</p>
         </div>
         <div className="header-right">
