@@ -313,15 +313,6 @@ export default function DJPage() {
   const removeSelectedTracks = async () => {
     if (selectedTracks.size === 0) return;
 
-    const count = selectedTracks.size;
-    if (
-      !confirm(
-        `Remove ${count} selected track${count > 1 ? "s" : ""} from the queue?`
-      )
-    ) {
-      return;
-    }
-
     try {
       const res = await fetch("/api/queue/remove", {
         method: "POST",
