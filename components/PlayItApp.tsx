@@ -513,6 +513,7 @@ export default function PlayItApp() {
   };
 
   // Load all tracks from playlist to voting (calls server API)
+  // Keeps existing tracks in queue, only adds new ones that aren't duplicates
   const loadPlaylistToVoting = async (playlist: SpotifyPlaylistFull) => {
     const tracks = playlist.tracks.items
       .filter((item) => item.track)
@@ -530,7 +531,7 @@ export default function PlayItApp() {
       const res = await fetch("/api/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tracks }),
+        body: JSON.stringify({ tracks, replaceAll: false }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -543,6 +544,7 @@ export default function PlayItApp() {
   };
 
   // Load all tracks from album to voting (calls server API)
+  // Keeps existing tracks in queue, only adds new ones that aren't duplicates
   const loadAlbumToVoting = async (album: SpotifyAlbumFull) => {
     const tracks = album.tracks.items
       .map((t) => ({
@@ -559,7 +561,7 @@ export default function PlayItApp() {
       const res = await fetch("/api/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tracks }),
+        body: JSON.stringify({ tracks, replaceAll: false }),
       });
       if (res.ok) {
         const data = await res.json();
