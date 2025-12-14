@@ -19,15 +19,6 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// User type from Spotify
-interface SpotifyUser {
-  id: string;
-  displayName: string;
-  email: string;
-  imageUrl?: string;
-  product: string;
-}
-
 // Spotify API response types
 interface SpotifyImage {
   url: string;
@@ -282,11 +273,6 @@ function VoteableSongItem({
 }
 
 export default function PlayItApp() {
-  // Auth state
-  const [user, setUser] = useState<SpotifyUser | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResults | null>(
@@ -312,86 +298,6 @@ export default function PlayItApp() {
   const [lastUpdated, setLastUpdated] = useState<number>(0);
   const [queueLoading, setQueueLoading] = useState(true);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Sync state
-  const [syncState, setSyncState] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [createdPlaylist, setCreatedPlaylist] = useState<{
-    name: string;
-    url: string;
-    tracks_added: number;
-    updated: boolean;
-  } | null>(null);
-  const [showSyncModal, setShowSyncModal] = useState(false);
-  const [playlistName, setPlaylistName] = useState("");
-
-  const isLoggedIn = !!user;
-
-  // Check for OAuth callback on page load
-  useEffect(() => {
-    const handleCallback = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
-      const state = params.get("state");
-      const error = params.get("error");
-
-      // Clear URL params
-      if (code || error) {
-        window.history.replaceState({}, "", window.location.pathname);
-      }
-
-      if (error) {
-        console.error("OAuth error:", error);
-        setAuthLoading(false);
-        return;
-      }
-
-      if (code && state) {
-        try {
-          const res = await fetch("/api/auth/callback", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code, state }),
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            localStorage.setItem("sessionId", data.sessionId);
-            setUser(data.user);
-          } else {
-            console.error("Failed to exchange code");
-          }
-        } catch (err) {
-          console.error("Callback error:", err);
-        }
-      }
-
-      // Check existing session
-      const sessionId = localStorage.getItem("sessionId");
-      if (sessionId) {
-        try {
-          const res = await fetch("/api/auth/me", {
-            headers: { Authorization: `Bearer ${sessionId}` },
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            setUser(data.user);
-          } else {
-            localStorage.removeItem("sessionId");
-          }
-        } catch (err) {
-          console.error("Auth check error:", err);
-        }
-      }
-
-      setAuthLoading(false);
-    };
-
-    handleCallback();
-  }, []);
 
   // Focus search input on mount
   useEffect(() => {
@@ -450,114 +356,6 @@ export default function PlayItApp() {
       }
     };
   }, [queueLoading, lastUpdated, fetchQueue]);
-
-  // Handle Sync button click - opens modal
-  const handleSync = () => {
-    if (!isLoggedIn) {
-      setShowLoginModal(true);
-    } else {
-      // Generate default playlist name with date
-      const date = new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-      setPlaylistName(`ZAHRAJ ČOSI Session - ${date}`);
-      setSyncState("idle");
-      setSyncError(null);
-      setCreatedPlaylist(null);
-      setShowSyncModal(true);
-    }
-  };
-
-  // Actually create the playlist
-  const createPlaylist = async () => {
-    if (!playlistName.trim()) return;
-
-    const sessionId = localStorage.getItem("sessionId");
-    if (!sessionId) {
-      setSyncError("Session not found. Please log in again.");
-      setSyncState("error");
-      return;
-    }
-
-    setSyncState("loading");
-    setSyncError(null);
-
-    try {
-      // Tracks are already sorted by votes from server
-      const trackUris = queuedTracks.map((t) => `spotify:track:${t.spotifyId}`);
-
-      const response = await fetch("/api/spotify/playlist/sync", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionId}`,
-        },
-        body: JSON.stringify({
-          name: playlistName.trim(),
-          description: `Created with ZAHRAJ ČOSI - ${queuedTracks.length} tracks sorted by votes`,
-          trackUris,
-          public: false,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to create playlist");
-      }
-
-      const data = await response.json();
-      setCreatedPlaylist({
-        name: data.playlist.name,
-        url: data.playlist.external_urls?.spotify || "",
-        tracks_added: data.playlist.tracks_added,
-        updated: data.updated || false,
-      });
-      setSyncState("success");
-    } catch (error) {
-      console.error("Sync error:", error);
-      setSyncError(
-        error instanceof Error ? error.message : "Failed to create playlist"
-      );
-      setSyncState("error");
-    }
-  };
-
-  // Close sync modal and reset
-  const closeSyncModal = () => {
-    setShowSyncModal(false);
-    setSyncState("idle");
-    setSyncError(null);
-  };
-
-  // Handle Spotify login - redirect to Spotify OAuth
-  const handleSpotifyLogin = async () => {
-    try {
-      const res = await fetch("/api/auth/login");
-      const data = await res.json();
-      window.location.href = data.url;
-    } catch (err) {
-      console.error("Login error:", err);
-    }
-  };
-
-  // Handle logout
-  const handleLogout = async () => {
-    const sessionId = localStorage.getItem("sessionId");
-    if (sessionId) {
-      try {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${sessionId}` },
-        });
-      } catch (err) {
-        console.error("Logout error:", err);
-      }
-    }
-    localStorage.removeItem("sessionId");
-    setUser(null);
-  };
 
   // Track IDs that are in the voting list (from server queue)
   const votingTrackIds = new Set(queuedTracks.map((t) => t.spotifyId));
@@ -776,22 +574,6 @@ export default function PlayItApp() {
     setSelectedAlbum(null);
   };
 
-  // Clear the voting queue (calls server API)
-  const clearVotingList = async () => {
-    try {
-      const res = await fetch("/api/queue", {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setQueuedTracks(data.queue.tracks);
-        setLastUpdated(data.queue.lastUpdated);
-      }
-    } catch (error) {
-      console.error("Error clearing queue:", error);
-    }
-  };
-
   return (
     <div className="app">
       <header className="header">
@@ -804,26 +586,6 @@ export default function PlayItApp() {
             />
           </h1>
           <p className="tagline">Search music & vote for what plays next</p>
-        </div>
-        <div className="header-right">
-          {authLoading ? null : user ? (
-            <div className="user-info">
-              {user.imageUrl && (
-                <img src={user.imageUrl} alt="" className="user-avatar" />
-              )}
-              <span className="user-name">{user.displayName}</span>
-              <button className="logout-btn" onClick={handleLogout}>
-                Logout
-              </button>
-            </div>
-          ) : (
-            <button
-              className="header-login-btn"
-              onClick={() => setShowLoginModal(true)}
-            >
-              Login with Spotify
-            </button>
-          )}
         </div>
       </header>
 
@@ -1083,18 +845,6 @@ export default function PlayItApp() {
                 LIVE
               </span>
             </div>
-            <div className="voting-actions">
-              {voteableSongs.length > 0 && (
-                <>
-                  <button className="sync-btn" onClick={handleSync}>
-                    Sync
-                  </button>
-                  <button className="clear-btn" onClick={clearVotingList}>
-                    Clear
-                  </button>
-                </>
-              )}
-            </div>
           </div>
 
           {queueLoading ? (
@@ -1128,142 +878,6 @@ export default function PlayItApp() {
           )}
         </section>
       </main>
-
-      {/* Login Modal */}
-      {showLoginModal && (
-        <div className="modal-overlay" onClick={() => setShowLoginModal(false)}>
-          <div className="login-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="modal-close"
-              onClick={() => setShowLoginModal(false)}
-            >
-              ×
-            </button>
-            <div className="login-content">
-              <div className="spotify-logo">
-                <svg viewBox="0 0 24 24" width="64" height="64">
-                  <circle cx="12" cy="12" r="12" fill="#1DB954" />
-                  <path
-                    d="M17.9 10.9C14.7 9 9.4 8.8 6.4 9.7c-.5.1-1-.2-1.1-.7-.1-.5.2-1 .7-1.1 3.4-1.1 9.2-.9 12.8 1.3.5.3.6.9.3 1.4-.3.4-.9.5-1.2.3zm-.2 2.9c-.2.4-.7.5-1 .3-2.7-1.7-6.8-2.2-10-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.2-.6 11.3 1.4.3.2.4.7.2 1zm-1.2 2.8c-.2.3-.5.4-.8.2-2.4-1.4-5.3-1.7-8.8-.9-.3.1-.6-.2-.7-.5-.1-.3.2-.6.5-.7 3.8-.9 7.1-.5 9.7 1.1.3.2.4.5.1.8z"
-                    fill="white"
-                  />
-                </svg>
-              </div>
-              <h2>Connect to Spotify</h2>
-              <p>Log in with your Spotify account to sync your voting queue</p>
-              <button
-                className="spotify-login-btn"
-                onClick={handleSpotifyLogin}
-              >
-                <svg viewBox="0 0 24 24" width="20" height="20">
-                  <circle cx="12" cy="12" r="12" fill="currentColor" />
-                  <path
-                    d="M17.9 10.9C14.7 9 9.4 8.8 6.4 9.7c-.5.1-1-.2-1.1-.7-.1-.5.2-1 .7-1.1 3.4-1.1 9.2-.9 12.8 1.3.5.3.6.9.3 1.4-.3.4-.9.5-1.2.3zm-.2 2.9c-.2.4-.7.5-1 .3-2.7-1.7-6.8-2.2-10-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.2-.6 11.3 1.4.3.2.4.7.2 1zm-1.2 2.8c-.2.3-.5.4-.8.2-2.4-1.4-5.3-1.7-8.8-.9-.3.1-.6-.2-.7-.5-.1-.3.2-.6.5-.7 3.8-.9 7.1-.5 9.7 1.1.3.2.4.5.1.8z"
-                    fill="#000"
-                  />
-                </svg>
-                Continue with Spotify
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Sync/Create Playlist Modal */}
-      {showSyncModal && (
-        <div className="modal-overlay" onClick={closeSyncModal}>
-          <div className="sync-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={closeSyncModal}>
-              ×
-            </button>
-
-            {syncState === "success" && createdPlaylist ? (
-              <div className="sync-content sync-success">
-                <div className="success-icon">✓</div>
-                <h2>
-                  Playlist {createdPlaylist.updated ? "Updated" : "Created"}!
-                </h2>
-                <p className="playlist-info">
-                  <strong>{createdPlaylist.name}</strong>
-                  <br />
-                  {createdPlaylist.tracks_added} tracks{" "}
-                  {createdPlaylist.updated ? "synced" : "added"}
-                </p>
-                {createdPlaylist.url && (
-                  <a
-                    href={createdPlaylist.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="open-spotify-btn"
-                  >
-                    <svg viewBox="0 0 24 24" width="20" height="20">
-                      <circle cx="12" cy="12" r="12" fill="#1DB954" />
-                      <path
-                        d="M17.9 10.9C14.7 9 9.4 8.8 6.4 9.7c-.5.1-1-.2-1.1-.7-.1-.5.2-1 .7-1.1 3.4-1.1 9.2-.9 12.8 1.3.5.3.6.9.3 1.4-.3.4-.9.5-1.2.3zm-.2 2.9c-.2.4-.7.5-1 .3-2.7-1.7-6.8-2.2-10-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.2-.6 11.3 1.4.3.2.4.7.2 1zm-1.2 2.8c-.2.3-.5.4-.8.2-2.4-1.4-5.3-1.7-8.8-.9-.3.1-.6-.2-.7-.5-.1-.3.2-.6.5-.7 3.8-.9 7.1-.5 9.7 1.1.3.2.4.5.1.8z"
-                        fill="white"
-                      />
-                    </svg>
-                    Open in Spotify
-                  </a>
-                )}
-                <button className="done-btn" onClick={closeSyncModal}>
-                  Done
-                </button>
-              </div>
-            ) : (
-              <div className="sync-content">
-                <div className="spotify-logo">
-                  <svg viewBox="0 0 24 24" width="48" height="48">
-                    <circle cx="12" cy="12" r="12" fill="#1DB954" />
-                    <path
-                      d="M17.9 10.9C14.7 9 9.4 8.8 6.4 9.7c-.5.1-1-.2-1.1-.7-.1-.5.2-1 .7-1.1 3.4-1.1 9.2-.9 12.8 1.3.5.3.6.9.3 1.4-.3.4-.9.5-1.2.3zm-.2 2.9c-.2.4-.7.5-1 .3-2.7-1.7-6.8-2.2-10-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.2-.6 11.3 1.4.3.2.4.7.2 1zm-1.2 2.8c-.2.3-.5.4-.8.2-2.4-1.4-5.3-1.7-8.8-.9-.3.1-.6-.2-.7-.5-.1-.3.2-.6.5-.7 3.8-.9 7.1-.5 9.7 1.1.3.2.4.5.1.8z"
-                      fill="white"
-                    />
-                  </svg>
-                </div>
-                <h2>Sync to Spotify</h2>
-                <p className="sync-desc">
-                  Creates a new playlist or updates existing one with{" "}
-                  {queuedTracks.length} tracks sorted by votes
-                </p>
-
-                <div className="playlist-name-input">
-                  <label htmlFor="playlist-name">Playlist Name</label>
-                  <input
-                    id="playlist-name"
-                    type="text"
-                    value={playlistName}
-                    onChange={(e) => setPlaylistName(e.target.value)}
-                    placeholder="Enter playlist name..."
-                    disabled={syncState === "loading"}
-                  />
-                </div>
-
-                {syncError && (
-                  <div className="sync-error">
-                    <span>❌</span> {syncError}
-                  </div>
-                )}
-
-                <button
-                  className="create-playlist-btn"
-                  onClick={createPlaylist}
-                  disabled={syncState === "loading" || !playlistName.trim()}
-                >
-                  {syncState === "loading" ? (
-                    <>
-                      <span className="spinner"></span>
-                      Syncing...
-                    </>
-                  ) : (
-                    "Sync Playlist"
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

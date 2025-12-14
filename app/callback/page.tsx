@@ -7,7 +7,7 @@ export default function CallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // The OAuth callback will be handled by the main page
+    // The OAuth callback will be handled by the DJ page
     // Just redirect there with the query params
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
@@ -15,11 +15,11 @@ export default function CallbackPage() {
     const error = params.get("error");
 
     if (code && state) {
-      router.push(`/?code=${code}&state=${state}`);
+      router.push(`/dj?code=${code}&state=${state}`);
     } else if (error) {
-      router.push(`/?error=${error}`);
+      router.push(`/dj?error=${error}`);
     } else {
-      router.push("/");
+      router.push("/dj");
     }
   }, [router]);
 
@@ -47,7 +47,7 @@ export default function CallbackPage() {
             animation: "spin 1s linear infinite",
           }}
         />
-        <p>Connecting to Spotify...</p>
+        <p>Connecting to Spotify... Redirecting to DJ Dashboard</p>
         <style>{`
           @keyframes spin {
             to { transform: rotate(360deg); }
@@ -57,4 +57,3 @@ export default function CallbackPage() {
     </div>
   );
 }
-

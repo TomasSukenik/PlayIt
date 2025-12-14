@@ -122,6 +122,21 @@ body {
   background: var(--spotify-green-hover);
 }
 
+.dj-link {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border: 1px solid #2a2a2d;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.dj-link:hover {
+  color: var(--text);
+  border-color: var(--spotify-green);
+}
+
 /* Main Layout - Two Columns */
 .main-layout {
   flex: 1;
@@ -1246,5 +1261,368 @@ body {
 
   .remove-btn {
     opacity: 1;
+  }
+}
+
+/* ========================================
+   DJ Page Styles
+   ======================================== */
+
+.dj-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.dj-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid #1f1f22;
+  background: linear-gradient(180deg, #111113 0%, var(--bg) 100%);
+}
+
+.dj-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.dj-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.dj-back-link {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.dj-back-link:hover {
+  color: var(--text);
+}
+
+.dj-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.dj-main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.dj-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: var(--text-muted);
+  gap: 1rem;
+}
+
+.dj-loading .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #2a2a2d;
+  border-top-color: var(--spotify-green);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* DJ Login Section */
+.dj-login-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.dj-login-card {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 3rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+
+.spotify-logo-large {
+  margin-bottom: 1.5rem;
+}
+
+.dj-login-card h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.dj-login-card p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+/* DJ Dashboard */
+.dj-dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.dj-sync-section,
+.dj-queue-section {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.dj-sync-section h2,
+.dj-queue-section h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Sync Form */
+.dj-sync-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.dj-sync-form .sync-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+/* DJ Buttons */
+.dj-btn {
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.dj-btn.primary {
+  background: var(--spotify-green);
+  color: #000;
+}
+
+.dj-btn.primary:hover:not(:disabled) {
+  background: var(--spotify-green-hover);
+}
+
+.dj-btn.secondary {
+  background: transparent;
+  border: 1px solid #2a2a2d;
+  color: var(--text);
+}
+
+.dj-btn.secondary:hover {
+  border-color: #444;
+}
+
+.dj-btn.danger {
+  background: transparent;
+  border: 1px solid #2a2a2d;
+  color: var(--text-muted);
+}
+
+.dj-btn.danger:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.dj-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* DJ Sync Success */
+.dj-sync-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.dj-sync-success h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.dj-sync-success .playlist-info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.dj-sync-success .playlist-info strong {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.dj-sync-success .open-spotify-btn {
+  margin-bottom: 1rem;
+}
+
+/* DJ Queue Section */
+.dj-queue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dj-queue-header h2 {
+  margin-bottom: 0;
+}
+
+.dj-queue-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.track-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.dj-queue-loading,
+.dj-queue-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.dj-queue-empty p {
+  margin-bottom: 1rem;
+}
+
+.dj-queue-list {
+  list-style: none;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.dj-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border-radius: 6px;
+  margin-bottom: 2px;
+}
+
+.dj-queue-rank {
+  width: 1.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.dj-queue-art {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.dj-queue-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.dj-queue-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dj-queue-artist {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dj-queue-votes {
+  font-size: 0.75rem;
+  color: var(--spotify-green);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* DJ Page Responsive */
+@media (max-width: 900px) {
+  .dj-dashboard {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dj-header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .dj-header-left {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .dj-main {
+    padding: 1rem;
+  }
+
+  .dj-login-card {
+    padding: 2rem;
+  }
+
+  .dj-sync-section,
+  .dj-queue-section {
+    padding: 1rem;
   }
 }
