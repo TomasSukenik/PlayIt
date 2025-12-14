@@ -294,6 +294,7 @@ export default function PlayItApp() {
   );
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Debounced search query (300ms delay)
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -390,6 +391,11 @@ export default function PlayItApp() {
     };
 
     handleCallback();
+  }, []);
+
+  // Focus search input on mount
+  useEffect(() => {
+    searchInputRef.current?.focus();
   }, []);
 
   // Fetch queue from server
@@ -827,6 +833,9 @@ export default function PlayItApp() {
           <div className="search-container">
             <form onSubmit={handleSearch} className="search-form">
               <input
+                ref={searchInputRef}
+                id="search"
+                name="search"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
