@@ -790,7 +790,13 @@ export default function PlayItApp() {
     <div className="app">
       <header className="header">
         <div className="header-left">
-          <h1 className="logo">ZAHRAJ ČOSI</h1>
+          <h1 className="logo">
+            <img
+              src="/zahraj_cosi_logo.svg"
+              alt="ZAHRAJ ČOSI"
+              className="logo-image"
+            />
+          </h1>
           <p className="tagline">Search music & vote for what plays next</p>
         </div>
         <div className="header-right">
