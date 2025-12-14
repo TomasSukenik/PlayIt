@@ -271,9 +271,6 @@ export default function DJPage() {
 
   // Clear the voting queue
   const clearVotingList = async () => {
-    if (!confirm("Are you sure you want to clear the entire voting queue?")) {
-      return;
-    }
     try {
       const res = await fetch("/api/queue", {
         method: "DELETE",
