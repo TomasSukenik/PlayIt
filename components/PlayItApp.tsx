@@ -562,6 +562,10 @@ export default function PlayItApp() {
   // Load full playlist
   const loadPlaylist = async (playlist: SpotifyPlaylist) => {
     setLoadingContent(true);
+    // Scroll to top on mobile when opening playlist
+    if (window.innerWidth <= 768) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
     try {
       const res = await fetch(`/api/spotify/playlist/${playlist.id}`);
       if (!res.ok) throw new Error("Failed to load playlist");
@@ -580,6 +584,10 @@ export default function PlayItApp() {
   // Load full album
   const loadAlbum = async (album: SpotifyAlbum) => {
     setLoadingContent(true);
+    // Scroll to top on mobile when opening album
+    if (window.innerWidth <= 768) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
     try {
       const res = await fetch(`/api/spotify/album/${album.id}`);
       if (!res.ok) throw new Error("Failed to load album");
