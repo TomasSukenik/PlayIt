@@ -1198,6 +1198,10 @@ body {
     text-align: center;
   }
 
+  .tagline {
+    display: none;
+  }
+
   .header-right {
     width: 100%;
     justify-content: center;
