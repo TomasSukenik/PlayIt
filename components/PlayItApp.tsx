@@ -301,7 +301,6 @@ export default function PlayItApp() {
 
   // Mobile drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const hasAutoOpenedDrawer = useRef(false);
 
   // Drawer drag state
   const [isDragging, setIsDragging] = useState(false);
@@ -400,23 +399,6 @@ export default function PlayItApp() {
       transition: "none",
     };
   }, [isDragging, dragOffset]);
-
-  // Auto-open drawer on initial load if there are songs in the queue
-  useEffect(() => {
-    // Only auto-open once, after initial queue load completes
-    if (
-      !queueLoading &&
-      !hasAutoOpenedDrawer.current &&
-      queuedTracks.length > 0
-    ) {
-      hasAutoOpenedDrawer.current = true;
-      // Small delay to let the page render first, so user sees the animation
-      const timer = setTimeout(() => {
-        setIsDrawerOpen(true);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [queueLoading, queuedTracks.length]);
 
   // Fetch queue from server
   const fetchQueue = useCallback(async (since?: number) => {
