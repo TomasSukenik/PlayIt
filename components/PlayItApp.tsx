@@ -299,6 +299,9 @@ export default function PlayItApp() {
   const [queueLoading, setQueueLoading] = useState(true);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Mobile drawer state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
   // Focus search input on mount
   useEffect(() => {
     searchInputRef.current?.focus();
@@ -833,50 +836,77 @@ export default function PlayItApp() {
         </section>
 
         {/* Voting Panel */}
-        <section className="voting-panel">
-          <div className="voting-header">
-            <div className="voting-title">
-              <h2>Voting Queue</h2>
-              <span
-                className="live-indicator"
-                title="Shared across all devices"
-              >
-                <span className="live-dot"></span>
-                LIVE
+        <section
+          className={`voting-panel ${isDrawerOpen ? "drawer-open" : ""}`}
+        >
+          {/* Mobile drawer handle */}
+          <div
+            className="drawer-handle"
+            onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+          >
+            <div className="drawer-handle-bar"></div>
+            <div className="drawer-peek">
+              <span className="drawer-peek-title">Voting Queue</span>
+              <span className="drawer-peek-count">
+                {voteableSongs.length}{" "}
+                {voteableSongs.length === 1 ? "song" : "songs"}
               </span>
             </div>
           </div>
 
-          {queueLoading ? (
-            <div className="empty-voting">
-              <p>Loading queue...</p>
+          <div className="voting-content">
+            <div className="voting-header">
+              <div className="voting-title">
+                <h2>Voting Queue</h2>
+                <span
+                  className="live-indicator"
+                  title="Shared across all devices"
+                >
+                  <span className="live-dot"></span>
+                  LIVE
+                </span>
+              </div>
             </div>
-          ) : voteableSongs.length > 0 ? (
-            <>
-              <p className="song-count">
-                {voteableSongs.length} songs • shared with all users
-              </p>
-              <ul className="song-list">
-                {voteableSongs.map((song, index) => (
-                  <VoteableSongItem
-                    key={song.spotifyId}
-                    song={song}
-                    rank={index + 1}
-                    onUpvote={handleSpotifyUpvote}
-                    onRemove={handleRemoveTrack}
-                  />
-                ))}
-              </ul>
-            </>
-          ) : (
-            <div className="empty-voting">
-              <p>No songs yet</p>
-              <span className="empty-hint">
-                Search for music and click + to add songs
-              </span>
-            </div>
-          )}
+
+            {queueLoading ? (
+              <div className="empty-voting">
+                <p>Loading queue...</p>
+              </div>
+            ) : voteableSongs.length > 0 ? (
+              <>
+                <p className="song-count">
+                  {voteableSongs.length} songs • shared with all users
+                </p>
+                <ul className="song-list">
+                  {voteableSongs.map((song, index) => (
+                    <VoteableSongItem
+                      key={song.spotifyId}
+                      song={song}
+                      rank={index + 1}
+                      onUpvote={handleSpotifyUpvote}
+                      onRemove={handleRemoveTrack}
+                    />
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <div className="empty-voting">
+                <p>No songs yet</p>
+                <span className="empty-hint">
+                  Search for music and click + to add songs
+                </span>
+              </div>
+            )}
+          </div>
         </section>
+
+        {/* Backdrop for mobile drawer */}
+        {isDrawerOpen && (
+          <div
+            className="drawer-backdrop"
+            onClick={() => setIsDrawerOpen(false)}
+          />
+        )}
       </main>
     </div>
   );

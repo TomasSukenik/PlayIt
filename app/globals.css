@@ -582,6 +582,20 @@ body {
   overflow-y: auto;
 }
 
+.voting-content {
+  display: contents;
+}
+
+/* Drawer handle - hidden on desktop */
+.drawer-handle {
+  display: none;
+}
+
+/* Drawer backdrop - hidden on desktop */
+.drawer-backdrop {
+  display: none;
+}
+
 .voting-header {
   display: flex;
   justify-content: space-between;
@@ -1188,15 +1202,117 @@ body {
 @media (max-width: 900px) {
   .main-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: 1fr;
+    position: relative;
   }
 
   .search-panel {
     border-right: none;
-    border-bottom: 1px solid #1f1f22;
+    border-bottom: none;
+    padding-bottom: 100px; /* Space for collapsed drawer */
   }
 
+  /* Mobile Drawer Styles */
   .voting-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px; /* Collapsed height */
+    max-height: 80vh;
+    padding: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    transition: height 0.3s ease;
+    overflow: hidden;
+  }
+
+  .voting-panel.drawer-open {
+    height: 80vh;
+  }
+
+  .drawer-handle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .drawer-handle-bar {
+    width: 40px;
+    height: 4px;
+    background: #444;
+    border-radius: 2px;
+    margin-bottom: 0.75rem;
+  }
+
+  .drawer-peek {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .drawer-peek-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .drawer-peek-count {
+    font-size: 0.8rem;
+    color: var(--spotify-green);
+  }
+
+  /* Hide peek info when drawer is open */
+  .voting-panel.drawer-open .drawer-peek {
+    display: none;
+  }
+
+  .voting-panel.drawer-open .drawer-handle {
+    padding-bottom: 0.5rem;
+  }
+
+  .voting-content {
+    display: flex;
+    flex-direction: column;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    padding: 0 1rem 1rem;
+  }
+
+  .voting-panel.drawer-open .voting-content {
+    height: auto;
+    flex: 1;
+    overflow-y: auto;
+    opacity: 1;
+  }
+
+  /* Backdrop */
+  .drawer-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 }
 
@@ -1229,6 +1345,7 @@ body {
 
   .search-panel {
     padding: 1rem;
+    padding-bottom: 100px;
   }
 
   .search-form {
@@ -1253,10 +1370,6 @@ body {
 
   .content-info {
     align-items: center;
-  }
-
-  .voting-panel {
-    padding: 1rem;
   }
 
   .remove-btn {
