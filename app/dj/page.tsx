@@ -51,6 +51,9 @@ export default function DJPage() {
   } | null>(null);
   const [playlistName, setPlaylistName] = useState("");
 
+  // Selection state for queue management
+  const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
+
   // Check for OAuth callback on page load
   useEffect(() => {
     const handleCallback = async () => {
@@ -279,9 +282,60 @@ export default function DJPage() {
         const data = await res.json();
         setQueuedTracks(data.queue.tracks);
         setLastUpdated(data.queue.lastUpdated);
+        setSelectedTracks(new Set());
       }
     } catch (error) {
       console.error("Error clearing queue:", error);
+    }
+  };
+
+  // Toggle select all tracks
+  const toggleSelectAll = () => {
+    if (selectedTracks.size === queuedTracks.length) {
+      setSelectedTracks(new Set());
+    } else {
+      setSelectedTracks(new Set(queuedTracks.map((t) => t.id)));
+    }
+  };
+
+  // Toggle single track selection
+  const toggleTrackSelection = (trackId: string) => {
+    const newSelected = new Set(selectedTracks);
+    if (newSelected.has(trackId)) {
+      newSelected.delete(trackId);
+    } else {
+      newSelected.add(trackId);
+    }
+    setSelectedTracks(newSelected);
+  };
+
+  // Remove selected tracks from queue
+  const removeSelectedTracks = async () => {
+    if (selectedTracks.size === 0) return;
+
+    const count = selectedTracks.size;
+    if (
+      !confirm(
+        `Remove ${count} selected track${count > 1 ? "s" : ""} from the queue?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/queue/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackIds: Array.from(selectedTracks) }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQueuedTracks(data.queue.tracks);
+        setLastUpdated(data.queue.lastUpdated);
+        setSelectedTracks(new Set());
+      }
+    } catch (error) {
+      console.error("Error removing tracks:", error);
     }
   };
 
@@ -389,8 +443,7 @@ export default function DJPage() {
               ) : (
                 <div className="dj-sync-form">
                   <p className="sync-desc">
-                    Creates a new playlist or updates existing one with{" "}
-                    {queuedTracks.length} tracks sorted by votes
+                    Creates a new playlist or updates existing one
                   </p>
 
                   <div className="playlist-name-input">
@@ -442,9 +495,22 @@ export default function DJPage() {
                     {queuedTracks.length} tracks
                   </span>
                   {queuedTracks.length > 0 && (
-                    <button className="dj-btn danger" onClick={clearVotingList}>
-                      Clear All
-                    </button>
+                    <>
+                      {selectedTracks.size > 0 && (
+                        <button
+                          className="dj-btn danger"
+                          onClick={removeSelectedTracks}
+                        >
+                          Remove Selected ({selectedTracks.size})
+                        </button>
+                      )}
+                      <button
+                        className="dj-btn danger"
+                        onClick={clearVotingList}
+                      >
+                        Clear All
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -459,27 +525,58 @@ export default function DJPage() {
                   </a>
                 </div>
               ) : (
-                <ul className="dj-queue-list">
-                  {queuedTracks.map((track, index) => (
-                    <li key={track.id} className="dj-queue-item">
-                      <span className="dj-queue-rank">{index + 1}</span>
-                      {track.albumArt && (
-                        <img
-                          src={track.albumArt}
-                          alt=""
-                          className="dj-queue-art"
-                        />
+                <>
+                  <div className="dj-queue-controls">
+                    <label className="dj-select-all">
+                      <input
+                        type="checkbox"
+                        checked={selectedTracks.size === queuedTracks.length}
+                        onChange={toggleSelectAll}
+                      />
+                      <span>Select all</span>
+                    </label>
+                    {selectedTracks.size > 0 &&
+                      selectedTracks.size < queuedTracks.length && (
+                        <span className="dj-selection-count">
+                          {selectedTracks.size} selected
+                        </span>
                       )}
-                      <div className="dj-queue-info">
-                        <span className="dj-queue-title">{track.name}</span>
-                        <span className="dj-queue-artist">{track.artists}</span>
-                      </div>
-                      <span className="dj-queue-votes">
-                        {track.votes} votes
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                  </div>
+                  <ul className="dj-queue-list">
+                    {queuedTracks.map((track, index) => (
+                      <li
+                        key={track.id}
+                        className={`dj-queue-item ${
+                          selectedTracks.has(track.id) ? "selected" : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="dj-queue-checkbox"
+                          checked={selectedTracks.has(track.id)}
+                          onChange={() => toggleTrackSelection(track.id)}
+                        />
+                        <span className="dj-queue-rank">{index + 1}</span>
+                        {track.albumArt && (
+                          <img
+                            src={track.albumArt}
+                            alt=""
+                            className="dj-queue-art"
+                          />
+                        )}
+                        <div className="dj-queue-info">
+                          <span className="dj-queue-title">{track.name}</span>
+                          <span className="dj-queue-artist">
+                            {track.artists}
+                          </span>
+                        </div>
+                        <span className="dj-queue-votes">
+                          {track.votes} votes
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
               )}
             </section>
           </div>

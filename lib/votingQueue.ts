@@ -137,6 +137,21 @@ export async function removeTrack(spotifyId: string): Promise<boolean> {
   return false;
 }
 
+// Remove multiple tracks by their IDs
+export async function removeTracks(trackIds: string[]): Promise<number> {
+  const state = await getState();
+  const initialLength = state.tracks.length;
+  const idsToRemove = new Set(trackIds);
+  state.tracks = state.tracks.filter((t) => !idsToRemove.has(t.id));
+
+  const removedCount = initialLength - state.tracks.length;
+  if (removedCount > 0) {
+    state.lastUpdated = Date.now();
+    await setState(state);
+  }
+  return removedCount;
+}
+
 // Upvote a track
 export async function upvoteTrack(
   spotifyId: string

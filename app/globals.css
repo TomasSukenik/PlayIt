@@ -1374,9 +1374,11 @@ body {
 
 /* DJ Dashboard */
 .dj-dashboard {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .dj-sync-section,
@@ -1593,12 +1595,56 @@ body {
   flex-shrink: 0;
 }
 
-/* DJ Page Responsive */
-@media (max-width: 900px) {
-  .dj-dashboard {
-    grid-template-columns: 1fr;
-  }
+/* DJ Queue Controls */
+.dj-queue-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
 }
+
+.dj-select-all {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.dj-select-all:hover {
+  color: var(--text);
+}
+
+.dj-select-all input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--spotify-green);
+  cursor: pointer;
+}
+
+.dj-selection-count {
+  font-size: 0.8rem;
+  color: var(--spotify-green);
+}
+
+.dj-queue-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--spotify-green);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dj-queue-item.selected {
+  background: rgba(29, 185, 84, 0.1);
+  outline: 1px solid rgba(29, 185, 84, 0.3);
+}
+
+/* DJ Page Responsive */
 
 @media (max-width: 640px) {
   .dj-header {
