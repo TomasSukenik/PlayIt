@@ -530,7 +530,7 @@ export default function PlayItApp() {
       const res = await fetch("/api/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tracks, replaceAll: true }),
+        body: JSON.stringify({ tracks }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -559,7 +559,7 @@ export default function PlayItApp() {
       const res = await fetch("/api/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tracks, replaceAll: true }),
+        body: JSON.stringify({ tracks }),
       });
       if (res.ok) {
         const data = await res.json();
