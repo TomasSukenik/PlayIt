@@ -996,13 +996,6 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.sync-desc {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 1.5rem;
-  line-height: 1.5;
-}
-
 .playlist-name-input {
   width: 100%;
   margin-bottom: 1.5rem;
@@ -1619,11 +1612,45 @@ body {
   min-height: 0;
 }
 
-.dj-sync-form .sync-desc {
-  font-size: 0.85rem;
-  color: var(--text-muted);
+.dj-sync-form .playlist-name-input {
+  width: 100%;
   margin-bottom: 1.5rem;
-  line-height: 1.5;
+}
+
+.dj-sync-form .playlist-name-input label {
+  display: block;
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dj-sync-form .playlist-name-input input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.875rem 1rem;
+  background: var(--bg);
+  border: 1px solid #2a2a2d;
+  border-radius: 8px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.dj-sync-form .playlist-name-input input::placeholder {
+  color: var(--text-muted);
+}
+
+.dj-sync-form .playlist-name-input input:focus {
+  border-color: var(--spotify-green);
+}
+
+.dj-sync-form .playlist-name-input input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* DJ Buttons */

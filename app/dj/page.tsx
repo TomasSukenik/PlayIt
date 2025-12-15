@@ -684,10 +684,6 @@ export default function DJPage() {
                 </div>
               ) : (
                 <div className="dj-sync-form">
-                  <p className="sync-desc">
-                    Creates new or updates existing playlist
-                  </p>
-
                   <div className="playlist-name-input">
                     <label htmlFor="playlist-name">Playlist Name</label>
                     <input
