@@ -359,9 +359,7 @@ export default function DJPage() {
           const items = data.items || [];
           const filteredItems = searchQuery.trim()
             ? items.filter((playlist: any) =>
-                playlist.name
-                  .toLowerCase()
-                  .includes(searchQuery.toLowerCase())
+                playlist.name.toLowerCase().includes(searchQuery.toLowerCase())
               )
             : items;
 
@@ -383,7 +381,9 @@ export default function DJPage() {
         }
 
         const res = await fetch(
-          `/api/spotify/search?q=${encodeURIComponent(searchQuery)}&type=playlist&limit=20`
+          `/api/spotify/search?q=${encodeURIComponent(
+            searchQuery
+          )}&type=playlist&limit=20`
         );
         if (res.ok) {
           const data = await res.json();
@@ -418,12 +418,16 @@ export default function DJPage() {
           return {
             spotifyId: track.id,
             name: track.name || "",
-            artists: (track.artists || [])
-              .map((a: any) => a?.name)
-              .filter(Boolean)
-              .join(", ") || "Unknown Artist",
+            artists:
+              (track.artists || [])
+                .map((a: any) => a?.name)
+                .filter(Boolean)
+                .join(", ") || "Unknown Artist",
             albumName: track.album?.name || "",
-            albumArt: track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || undefined,
+            albumArt:
+              track.album?.images?.[2]?.url ||
+              track.album?.images?.[0]?.url ||
+              undefined,
             duration_ms: track.duration_ms || 0,
           };
         })
@@ -526,39 +530,33 @@ export default function DJPage() {
           <div className="dj-dashboard">
             {/* Preload Playlist Section */}
             <section className="dj-preload-section">
-              <h2 className="playlist-type-header">
-                Preload from{" "}
-                <button
-                  className={`playlist-type-btn ${
-                    playlistType === "my" ? "active" : ""
-                  }`}
-                  onClick={() => {
-                    setPlaylistType("my");
-                    setSearchResults(null);
-                    setSearchQuery("");
-                  }}
-                >
-                  My
-                </button>{" "}
-                <button
-                  className={`playlist-type-btn ${
-                    playlistType === "public" ? "active" : ""
-                  }`}
-                  onClick={() => {
-                    setPlaylistType("public");
-                    setSearchResults(null);
-                    setSearchQuery("");
-                  }}
-                >
-                  Public
-                </button>{" "}
-                Playlist
-              </h2>
+              <h2 className="playlist-type-header">Preload from Spotify</h2>
               <div className="dj-preload-form">
                 <p className="preload-desc">
-                  {playlistType === "my"
-                    ? "Browse your playlists or search by name"
-                    : "Search for a public Spotify playlist and load its tracks into the queue"}
+                  <button
+                    className={`playlist-type-btn ${
+                      playlistType === "my" ? "active" : ""
+                    }`}
+                    onClick={() => {
+                      setPlaylistType("my");
+                      setSearchResults(null);
+                      setSearchQuery("");
+                    }}
+                  >
+                    My
+                  </button>{" "}
+                  <button
+                    className={`playlist-type-btn ${
+                      playlistType === "public" ? "active" : ""
+                    }`}
+                    onClick={() => {
+                      setPlaylistType("public");
+                      setSearchResults(null);
+                      setSearchQuery("");
+                    }}
+                  >
+                    Public
+                  </button>
                 </p>
 
                 <div className="search-input-group">
@@ -586,7 +584,7 @@ export default function DJPage() {
                         {playlistType === "my" ? "Loading..." : "Searching..."}
                       </>
                     ) : playlistType === "my" ? (
-                      "Load My Playlists"
+                      "Load"
                     ) : (
                       "Search"
                     )}
@@ -607,7 +605,10 @@ export default function DJPage() {
                       searchResults.playlists.items
                         .filter((playlist: any) => playlist?.id)
                         .map((playlist: any) => (
-                          <div key={playlist.id} className="playlist-result-item">
+                          <div
+                            key={playlist.id}
+                            className="playlist-result-item"
+                          >
                             {playlist.images?.[0]?.url && (
                               <img
                                 src={playlist.images[0].url}
@@ -622,22 +623,22 @@ export default function DJPage() {
                                 {playlist.owner?.display_name || "Unknown"}
                               </p>
                             </div>
-                          <button
-                            className="dj-btn primary"
-                            onClick={() => loadPlaylistToQueue(playlist.id)}
-                            disabled={loadingPlaylist}
-                          >
-                            {loadingPlaylist ? (
-                              <>
-                                <span className="spinner-small"></span>
-                                Loading...
-                              </>
-                            ) : (
-                              "Load to Queue"
-                            )}
-                          </button>
-                        </div>
-                      ))
+                            <button
+                              className="dj-btn primary"
+                              onClick={() => loadPlaylistToQueue(playlist.id)}
+                              disabled={loadingPlaylist}
+                            >
+                              {loadingPlaylist ? (
+                                <>
+                                  <span className="spinner-small"></span>
+                                  Loading...
+                                </>
+                              ) : (
+                                "Load to Queue"
+                              )}
+                            </button>
+                          </div>
+                        ))
                     )}
                   </div>
                 )}
