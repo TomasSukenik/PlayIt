@@ -1485,56 +1485,10 @@ body {
 
 /* DJ Dashboard */
 .dj-dashboard {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
   width: 100%;
-  height: calc(100vh - 120px); /* Full height minus header */
-  overflow: hidden;
-}
-
-/* Tablet: 2 columns */
-@media (min-width: 768px) {
-  .dj-dashboard {
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-  }
-
-  .dj-queue-section {
-    grid-column: 1 / -1;
-  }
-}
-
-/* Desktop: 3 columns side-by-side */
-@media (min-width: 1200px) {
-  .dj-dashboard {
-    grid-template-columns: 1fr 1fr 1.2fr;
-    gap: 1.5rem;
-    max-width: 1800px;
-    margin: 0 auto;
-    height: calc(100vh - 100px);
-  }
-
-  .dj-preload-section {
-    grid-column: 1;
-  }
-
-  .dj-sync-section {
-    grid-column: 2;
-  }
-
-  .dj-queue-section {
-    grid-column: 3;
-  }
-}
-
-/* Very wide screens: Optimize spacing */
-@media (min-width: 1600px) {
-  .dj-dashboard {
-    grid-template-columns: 1fr 1fr 1.5fr;
-    gap: 2rem;
-    max-width: 2000px;
-  }
 }
 
 .dj-sync-section,
@@ -1547,15 +1501,6 @@ body {
   flex-direction: column;
   overflow: hidden;
   min-height: 0; /* Allow flex children to shrink */
-}
-
-@media (min-width: 1200px) {
-  .dj-sync-section,
-  .dj-preload-section,
-  .dj-queue-section {
-    height: 100%;
-    max-height: calc(100vh - 120px);
-  }
 }
 
 .dj-sync-section h2,
@@ -1799,13 +1744,6 @@ body {
   overflow-x: hidden;
 }
 
-@media (min-width: 1200px) {
-  .playlist-results {
-    max-height: none;
-    grid-template-columns: 1fr;
-  }
-}
-
 .playlist-result-item {
   display: flex;
   align-items: center;
@@ -1919,12 +1857,6 @@ body {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-}
-
-@media (min-width: 1200px) {
-  .dj-queue-list {
-    max-height: none;
-  }
 }
 
 .dj-queue-item {
