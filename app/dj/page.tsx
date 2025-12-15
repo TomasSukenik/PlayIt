@@ -54,6 +54,13 @@ export default function DJPage() {
   // Selection state for queue management
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
 
+  // Playlist preload state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any>(null);
+  const [searching, setSearching] = useState(false);
+  const [loadingPlaylist, setLoadingPlaylist] = useState(false);
+  const [preloadError, setPreloadError] = useState<string | null>(null);
+
   // Check for OAuth callback on page load
   useEffect(() => {
     const handleCallback = async () => {
@@ -327,6 +334,79 @@ export default function DJPage() {
     }
   };
 
+  // Search for playlists
+  const searchPlaylists = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setPreloadError(null);
+    try {
+      const res = await fetch(
+        `/api/spotify/search?q=${encodeURIComponent(searchQuery)}&type=playlist&limit=20`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data);
+      } else {
+        setPreloadError("Failed to search playlists");
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      setPreloadError("Failed to search playlists");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Load playlist tracks into queue
+  const loadPlaylistToQueue = async (playlistId: string) => {
+    setLoadingPlaylist(true);
+    setPreloadError(null);
+    try {
+      // Fetch playlist details
+      const playlistRes = await fetch(`/api/spotify/playlist/${playlistId}`);
+      if (!playlistRes.ok) throw new Error("Failed to load playlist");
+      const playlistData = await playlistRes.json();
+
+      // Extract tracks
+      const tracks = playlistData.tracks.items
+        .filter((item: any) => item.track)
+        .map((item: any) => ({
+          spotifyId: item.track.id,
+          name: item.track.name,
+          artists: item.track.artists.map((a: any) => a.name).join(", "),
+          albumName: item.track.album?.name || "",
+          albumArt: item.track.album?.images?.[2]?.url,
+          duration_ms: item.track.duration_ms,
+        }))
+        .slice(0, 30); // Max 30 tracks
+
+      // Add tracks to queue
+      const res = await fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tracks, replaceAll: false }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setQueuedTracks(data.queue.tracks);
+        setLastUpdated(data.queue.lastUpdated);
+        setSearchQuery("");
+        setSearchResults(null);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to add tracks to queue");
+      }
+    } catch (error) {
+      console.error("Error loading playlist:", error);
+      setPreloadError(
+        error instanceof Error ? error.message : "Failed to load playlist"
+      );
+    } finally {
+      setLoadingPlaylist(false);
+    }
+  };
+
   return (
     <div className="dj-page">
       <header className="dj-header">
@@ -391,6 +471,89 @@ export default function DJPage() {
           </div>
         ) : (
           <div className="dj-dashboard">
+            {/* Preload Playlist Section */}
+            <section className="dj-preload-section">
+              <h2>Preload from Playlist</h2>
+              <div className="dj-preload-form">
+                <p className="preload-desc">
+                  Search for a Spotify playlist and load its tracks into the queue
+                </p>
+
+                <div className="search-input-group">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && searchPlaylists()}
+                    placeholder="Search for a playlist..."
+                    disabled={searching || loadingPlaylist}
+                    className="playlist-search-input"
+                  />
+                  <button
+                    className="dj-btn secondary"
+                    onClick={searchPlaylists}
+                    disabled={searching || !searchQuery.trim() || loadingPlaylist}
+                  >
+                    {searching ? (
+                      <>
+                        <span className="spinner-small"></span>
+                        Searching...
+                      </>
+                    ) : (
+                      "Search"
+                    )}
+                  </button>
+                </div>
+
+                {preloadError && (
+                  <div className="sync-error">
+                    <span>❌</span> {preloadError}
+                  </div>
+                )}
+
+                {searchResults?.playlists?.items && (
+                  <div className="playlist-results">
+                    {searchResults.playlists.items.length === 0 ? (
+                      <p className="no-results">No playlists found</p>
+                    ) : (
+                      searchResults.playlists.items.map((playlist: any) => (
+                        <div key={playlist.id} className="playlist-result-item">
+                          {playlist.images?.[0] && (
+                            <img
+                              src={playlist.images[0].url}
+                              alt=""
+                              className="playlist-thumb"
+                            />
+                          )}
+                          <div className="playlist-info">
+                            <h4>{playlist.name}</h4>
+                            <p>
+                              {playlist.tracks.total} tracks •{" "}
+                              {playlist.owner.display_name}
+                            </p>
+                          </div>
+                          <button
+                            className="dj-btn primary"
+                            onClick={() => loadPlaylistToQueue(playlist.id)}
+                            disabled={loadingPlaylist}
+                          >
+                            {loadingPlaylist ? (
+                              <>
+                                <span className="spinner-small"></span>
+                                Loading...
+                              </>
+                            ) : (
+                              "Load to Queue"
+                            )}
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+
             {/* Sync Section */}
             <section className="dj-sync-section">
               <h2>Sync to Spotify</h2>

@@ -1500,6 +1500,7 @@ body {
 }
 
 .dj-sync-section,
+.dj-preload-section,
 .dj-queue-section {
   background: var(--surface);
   border-radius: 12px;
@@ -1507,6 +1508,7 @@ body {
 }
 
 .dj-sync-section h2,
+.dj-preload-section h2,
 .dj-queue-section h2 {
   font-size: 1.1rem;
   font-weight: 600;
@@ -1614,6 +1616,122 @@ body {
 }
 
 .dj-sync-success .open-spotify-btn {
+  margin-bottom: 1rem;
+}
+
+/* DJ Preload Section */
+.dj-preload-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.dj-preload-form .preload-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.search-input-group {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.playlist-search-input {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.875rem 1rem;
+  background: var(--bg);
+  border: 1px solid #2a2a2d;
+  border-radius: 8px;
+  color: var(--text);
+  transition: border-color 0.15s ease;
+}
+
+.playlist-search-input:focus {
+  outline: none;
+  border-color: var(--spotify-green);
+}
+
+.playlist-search-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.playlist-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.playlist-result-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg);
+  border: 1px solid #2a2a2d;
+  border-radius: 8px;
+  transition: border-color 0.15s ease;
+}
+
+.playlist-result-item:hover {
+  border-color: #444;
+}
+
+.playlist-thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.playlist-result-item .playlist-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.playlist-result-item .playlist-info h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-result-item .playlist-info p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.no-results {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.sync-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #ef4444;
+  font-size: 0.85rem;
   margin-bottom: 1rem;
 }
 
@@ -1786,6 +1904,7 @@ body {
   }
 
   .dj-sync-section,
+  .dj-preload-section,
   .dj-queue-section {
     padding: 1rem;
   }
@@ -1805,5 +1924,19 @@ body {
   .dj-queue-actions .dj-btn {
     padding: 0.5rem 0.75rem;
     font-size: 0.75rem;
+  }
+
+  .search-input-group {
+    flex-direction: column;
+  }
+
+  .playlist-result-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .playlist-result-item .dj-btn {
+    width: 100%;
   }
 }
