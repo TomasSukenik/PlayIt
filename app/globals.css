@@ -1515,6 +1515,44 @@ body {
   margin-bottom: 1rem;
 }
 
+.playlist-type-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.playlist-type-btn {
+  font-family: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  background: transparent;
+  border: 1px solid #2a2a2d;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.playlist-type-btn:hover {
+  border-color: var(--spotify-green);
+  color: var(--text);
+}
+
+.playlist-type-btn.active {
+  background: var(--spotify-green);
+  border-color: var(--spotify-green);
+  color: #000;
+}
+
+.playlist-type-btn.active:hover {
+  background: var(--spotify-green-hover);
+  border-color: var(--spotify-green-hover);
+}
+
 /* Sync Form */
 .dj-sync-form {
   display: flex;

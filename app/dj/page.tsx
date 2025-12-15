@@ -55,6 +55,7 @@ export default function DJPage() {
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
 
   // Playlist preload state
+  const [playlistType, setPlaylistType] = useState<"my" | "public">("my");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any>(null);
   const [searching, setSearching] = useState(false);
@@ -336,18 +337,60 @@ export default function DJPage() {
 
   // Search for playlists
   const searchPlaylists = async () => {
-    if (!searchQuery.trim()) return;
     setSearching(true);
     setPreloadError(null);
     try {
-      const res = await fetch(
-        `/api/spotify/search?q=${encodeURIComponent(searchQuery)}&type=playlist&limit=20`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data);
+      if (playlistType === "my") {
+        // Fetch user's playlists
+        const sessionId = localStorage.getItem("sessionId");
+        if (!sessionId) {
+          setPreloadError("Please log in to view your playlists");
+          setSearching(false);
+          return;
+        }
+
+        const res = await fetch("/api/spotify/me/playlists?limit=50", {
+          headers: { Authorization: `Bearer ${sessionId}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // Filter playlists by search query if provided
+          const items = data.items || [];
+          const filteredItems = searchQuery.trim()
+            ? items.filter((playlist: any) =>
+                playlist.name
+                  .toLowerCase()
+                  .includes(searchQuery.toLowerCase())
+              )
+            : items;
+
+          setSearchResults({
+            playlists: {
+              items: filteredItems,
+              total: filteredItems.length,
+            },
+          });
+        } else {
+          setPreloadError("Failed to fetch your playlists");
+        }
       } else {
-        setPreloadError("Failed to search playlists");
+        // Search public playlists
+        if (!searchQuery.trim()) {
+          setPreloadError("Please enter a search query");
+          setSearching(false);
+          return;
+        }
+
+        const res = await fetch(
+          `/api/spotify/search?q=${encodeURIComponent(searchQuery)}&type=playlist&limit=20`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data);
+        } else {
+          setPreloadError("Failed to search playlists");
+        }
       }
     } catch (error) {
       console.error("Search error:", error);
@@ -483,10 +526,39 @@ export default function DJPage() {
           <div className="dj-dashboard">
             {/* Preload Playlist Section */}
             <section className="dj-preload-section">
-              <h2>Preload from Playlist</h2>
+              <h2 className="playlist-type-header">
+                Preload from{" "}
+                <button
+                  className={`playlist-type-btn ${
+                    playlistType === "my" ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    setPlaylistType("my");
+                    setSearchResults(null);
+                    setSearchQuery("");
+                  }}
+                >
+                  My
+                </button>{" "}
+                <button
+                  className={`playlist-type-btn ${
+                    playlistType === "public" ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    setPlaylistType("public");
+                    setSearchResults(null);
+                    setSearchQuery("");
+                  }}
+                >
+                  Public
+                </button>{" "}
+                Playlist
+              </h2>
               <div className="dj-preload-form">
                 <p className="preload-desc">
-                  Search for a Spotify playlist and load its tracks into the queue
+                  {playlistType === "my"
+                    ? "Browse your playlists or search by name"
+                    : "Search for a public Spotify playlist and load its tracks into the queue"}
                 </p>
 
                 <div className="search-input-group">
@@ -502,13 +574,19 @@ export default function DJPage() {
                   <button
                     className="dj-btn secondary"
                     onClick={searchPlaylists}
-                    disabled={searching || !searchQuery.trim() || loadingPlaylist}
+                    disabled={
+                      searching ||
+                      (playlistType === "public" && !searchQuery.trim()) ||
+                      loadingPlaylist
+                    }
                   >
                     {searching ? (
                       <>
                         <span className="spinner-small"></span>
-                        Searching...
+                        {playlistType === "my" ? "Loading..." : "Searching..."}
                       </>
+                    ) : playlistType === "my" ? (
+                      "Load My Playlists"
                     ) : (
                       "Search"
                     )}
