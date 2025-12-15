@@ -367,18 +367,28 @@ export default function DJPage() {
       if (!playlistRes.ok) throw new Error("Failed to load playlist");
       const playlistData = await playlistRes.json();
 
-      // Extract tracks
-      const tracks = playlistData.tracks.items
-        .filter((item: any) => item.track)
-        .map((item: any) => ({
-          spotifyId: item.track.id,
-          name: item.track.name,
-          artists: item.track.artists.map((a: any) => a.name).join(", "),
-          albumName: item.track.album?.name || "",
-          albumArt: item.track.album?.images?.[2]?.url,
-          duration_ms: item.track.duration_ms,
-        }))
+      // Extract tracks with proper null checks
+      const tracks = (playlistData.tracks?.items || [])
+        .filter((item: any) => item?.track && item.track.id)
+        .map((item: any) => {
+          const track = item.track;
+          return {
+            spotifyId: track.id,
+            name: track.name || "",
+            artists: (track.artists || [])
+              .map((a: any) => a?.name)
+              .filter(Boolean)
+              .join(", ") || "Unknown Artist",
+            albumName: track.album?.name || "",
+            albumArt: track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || undefined,
+            duration_ms: track.duration_ms || 0,
+          };
+        })
         .slice(0, 30); // Max 30 tracks
+
+      if (tracks.length === 0) {
+        throw new Error("No valid tracks found in playlist");
+      }
 
       // Add tracks to queue
       const res = await fetch("/api/queue", {
@@ -516,22 +526,24 @@ export default function DJPage() {
                     {searchResults.playlists.items.length === 0 ? (
                       <p className="no-results">No playlists found</p>
                     ) : (
-                      searchResults.playlists.items.map((playlist: any) => (
-                        <div key={playlist.id} className="playlist-result-item">
-                          {playlist.images?.[0] && (
-                            <img
-                              src={playlist.images[0].url}
-                              alt=""
-                              className="playlist-thumb"
-                            />
-                          )}
-                          <div className="playlist-info">
-                            <h4>{playlist.name}</h4>
-                            <p>
-                              {playlist.tracks.total} tracks •{" "}
-                              {playlist.owner.display_name}
-                            </p>
-                          </div>
+                      searchResults.playlists.items
+                        .filter((playlist: any) => playlist?.id)
+                        .map((playlist: any) => (
+                          <div key={playlist.id} className="playlist-result-item">
+                            {playlist.images?.[0]?.url && (
+                              <img
+                                src={playlist.images[0].url}
+                                alt=""
+                                className="playlist-thumb"
+                              />
+                            )}
+                            <div className="playlist-info">
+                              <h4>{playlist.name || "Unnamed Playlist"}</h4>
+                              <p>
+                                {playlist.tracks?.total || 0} tracks •{" "}
+                                {playlist.owner?.display_name || "Unknown"}
+                              </p>
+                            </div>
                           <button
                             className="dj-btn primary"
                             onClick={() => loadPlaylistToQueue(playlist.id)}
