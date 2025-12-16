@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
       if (!track) {
         return NextResponse.json(
-          { error: "Track already in queue or queue is full (max 30)" },
+          { error: "Track already in queue or queue is full (max 10000)" },
           { status: 400 }
         );
       }
@@ -69,7 +69,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request body" },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("Error adding to queue:", error);
     return NextResponse.json(

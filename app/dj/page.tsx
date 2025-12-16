@@ -409,7 +409,7 @@ export default function DJPage() {
             duration_ms: track.duration_ms || 0,
           };
         })
-        .slice(0, 30); // Max 30 tracks
+        .slice(0, 10000); // Max 10000 tracks (Spotify's playlist maximum)
 
       if (tracks.length === 0) {
         throw new Error("No valid tracks found in playlist");

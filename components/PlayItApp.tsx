@@ -588,7 +588,7 @@ export default function PlayItApp() {
   // Add single track to voting (calls server API)
   const addTrackToVoting = async (track: SpotifyTrackSimple) => {
     if (queuedTracks.some((t) => t.spotifyId === track.id)) return;
-    if (queuedTracks.length >= 30) return; // Max 30 tracks
+    if (queuedTracks.length >= 10000) return; // Max 10000 tracks (Spotify's playlist maximum)
 
     try {
       const res = await fetch("/api/queue", {

@@ -67,8 +67,8 @@ export async function addTrack(
     return null;
   }
 
-  // Limit queue size to 30 tracks
-  if (state.tracks.length >= 30) {
+  // Limit queue size to 10000 tracks (Spotify's playlist maximum)
+  if (state.tracks.length >= 10000) {
     return null;
   }
 
@@ -101,7 +101,7 @@ export async function addTracks(
   const existingIds = new Set(state.tracks.map((t) => t.spotifyId));
 
   for (const track of tracks) {
-    if (state.tracks.length >= 30) break;
+    if (state.tracks.length >= 10000) break;
     if (existingIds.has(track.spotifyId)) continue;
 
     const newTrack: QueuedTrack = {
